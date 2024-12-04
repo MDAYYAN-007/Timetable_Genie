@@ -1,6 +1,7 @@
 import React from 'react';
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Link from 'next/link';
 
 const About = () => {
   return (
@@ -27,12 +28,12 @@ const About = () => {
           <p className="text-gray-700 text-lg mb-6">
             Whether you are a small school or a large university, Timetable Genie adapts to your needs. Join us in transforming the way timetables are created and managed, and experience the power of simplicity and efficiency.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-block bg-gradient-to-r from-[#00695c] to-[#8e44ad] text-white font-bold py-2 px-4 rounded hover:bg-[#4f94b0] transform hover:scale-105 transition-all"
           >
             Go Back to Home
-          </a>
+          </Link>
         </div>
       </div>
       <Footer />
