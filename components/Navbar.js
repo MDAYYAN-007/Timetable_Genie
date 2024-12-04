@@ -35,31 +35,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Dropdown Menu */}
-      <div className="mobile-menu bg-gradient-to-r from-[#8e44ad] to-[#3498db] lg:hidden absolute w-full top-full left-0 p-4">
-        <ul className="space-y-4 text-white text-lg">
-          <li>
-            <Link href="/" passHref>
-              <p className="nav-link block hover:text-[#ff8a65]">Home</p>
-            </Link>
-          </li>
-          <li>
-            <Link href="#features" passHref>
-              <p className="nav-link block hover:text-[#ff8a65]">Features</p>
-            </Link>
-          </li>
-          <li>
-            <Link href="#about" passHref>
-              <p className="nav-link block hover:text-[#ff8a65]">About</p>
-            </Link>
-          </li>
-          <li>
-            <Link href="#contact" passHref>
-              <p className="nav-link block hover:text-[#ff8a65]">Contact</p>
-            </Link>
-          </li>
-        </ul>
-      </div>
+      
     </nav>
   );
 }
