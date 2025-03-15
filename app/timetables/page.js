@@ -3,8 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { FiEye, FiEdit, FiTrash2, FiSave } from 'react-icons/fi';
 import toast, { Toaster } from 'react-hot-toast';
+import { useSession } from 'next-auth/react';
+import getTimetables from '@/actions/getTimetables';
+import { query } from '@/actions/db.js';
+import storeTimeTable from '@/actions/storeTimetables';
+import getUserData from '@/actions/getUserData';
 
 const Timetables = () => {
   const [timetables, setTimetables] = useState([]);
@@ -15,21 +19,38 @@ const Timetables = () => {
   const [loading, setLoading] = useState(true);
   const modalRef = useRef(null);
 
-  // Load timetables from localStorage on page load
+  const { data: session } = useSession();
+
   useEffect(() => {
-    try {
-      const savedTimetables = localStorage.getItem('timetables');
-      if (savedTimetables) {
-        setTimetables(JSON.parse(savedTimetables));
+    const loadTimetables = async () => {
+      try {
+        setLoading(true);
+
+        if (session === undefined){
+          return(
+            <div>Loading...</div>
+          )
+        }
+
+        if (session) {
+          const timetables = await getTimetables(session.user.email);
+          setTimetables(timetables);
+        } else {
+          const savedTimetables = localStorage.getItem("timetables");
+          if (savedTimetables) {
+            setTimetables(JSON.parse(savedTimetables));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load timetables", error);
+      } finally {
+        setTimeout(() => setLoading(false), 1000);
       }
-    } catch (error) {
-      console.error("Failed to load timetables from localStorage", error);
-    } finally {
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    }
-  }, []);
+    };
+
+    loadTimetables();
+  }, [session]);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -44,29 +65,48 @@ const Timetables = () => {
   }, []);
 
   // Save the new timetable to localStorage
-  const handleCreateTimetable = () => {
+  const handleCreateTimetable = async () => {
     const id = Date.now().toString();
     const newTimetable = { id, name: timetableName };
+    try {
+      if (session) {
+        const userData = await getUserData(session.user.email);
+        const user_id = userData.id;
+        await storeTimeTable(id, timetableName, user_id);
 
-    const updatedTimetables = [...timetables, newTimetable];
-    localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
+        const updatedTimetables = await getTimetables(session.user.email);
+        setTimetables(updatedTimetables);
+      } else if (!session) {
+        const updatedTimetables = [...timetables, newTimetable];
+        localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
+        setTimetables(updatedTimetables);
+      }
 
-    setTimetables(updatedTimetables);
-    setIsCreateModalOpen(false);
-    setTimetableName('');
+      setIsCreateModalOpen(false);
+      setTimetableName('');
 
-    toast.success('Timetable created successfully!');
+      toast.success('Timetable created successfully!');
+    } catch (error) {
+      console.error("Failed to create timetable", error);
+    };
   };
 
   // Handle deleting timetable
-  const handleDeleteTimetable = (id) => {
+  const handleDeleteTimetable = async (id) => {
     const isConfirmed = window.confirm('Are you sure you want to delete this timetable?');
 
     if (isConfirmed) {
-      const updatedTimetables = timetables.filter(timetable => timetable.id !== id);
-      localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
-      setTimetables(updatedTimetables);
-      toast.error('Timetable deleted successfully!');
+      if (session) {
+        await query(`DELETE FROM timetables WHERE id = $1`, id);
+        const updatedTimetables = await getTimetables(session.user.email);
+        setTimetables(updatedTimetables);
+        toast.success('Timetable deleted successfully!');
+      } else if (!session) {
+        const updatedTimetables = timetables.filter(timetable => timetable.id !== id);
+        localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
+        setTimetables(updatedTimetables);
+        toast.success('Timetable deleted successfully!');
+      }
     }
   };
 
@@ -78,20 +118,35 @@ const Timetables = () => {
     setIsEditNameModalOpen(true);
   };
 
-  // Save edited timetable name
-  const handleSaveEditedName = () => {
-    const updatedTimetables = timetables.map(timetable =>
-      timetable.id === editingTimetableId ? { ...timetable, name: timetableName } : timetable
-    );
-    localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
-    setTimetables(updatedTimetables);
-    setIsEditNameModalOpen(false);
-    setEditingTimetableId(null);
-    setTimetableName('');
-    toast.success('Timetable name updated successfully!');
+  const handleSaveEditedName = async () => {
+    try {
+      if (!editingTimetableId) return;
+
+      if (session) {
+        // Update in database for logged-in users
+        await query(`UPDATE timetables SET name = $1 WHERE id = $2`, [timetableName, editingTimetableId]);
+        const timetables = await getTimetables(session.user.email);
+        setTimetables(timetables);
+      } else {
+        // Update in local storage for guests
+        const updatedTimetables = timetables.map(timetable =>
+          timetable.id === editingTimetableId ? { ...timetable, name: timetableName } : timetable
+        );
+        localStorage.setItem("timetables", JSON.stringify(updatedTimetables));
+        setTimetables(updatedTimetables);
+      }
+
+      // Reset states
+      setIsEditNameModalOpen(false);
+      setEditingTimetableId(null);
+      setTimetableName("");
+      toast.success("Timetable name updated successfully!");
+    } catch (error) {
+      console.error("Failed to update timetable name:", error);
+      toast.error("Failed to update timetable name.");
+    }
   };
 
-  // Render loading screen if still loading
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -100,8 +155,8 @@ const Timetables = () => {
     <>
       <Navbar />
       <Toaster />
-      <div className="h-[84dvh] bg-gray-50 py-12 mt-12">
-        <div className="container mx-auto px-4">
+      <div className="min-h-[85dvh] bg-gray-50 py-12 mt-12">
+        <div className="mx-auto px-4">
           <h1 className="text-4xl font-extrabold text-center text-[#00695c] mb-6">
             Timetables
           </h1>
@@ -110,57 +165,56 @@ const Timetables = () => {
               onClick={() => setIsCreateModalOpen(true)}
               className="inline-block bg-gradient-to-r from-[#00695c] to-[#8e44ad] text-white font-bold py-2 px-6 rounded-lg hover:bg-[#4f94b0] transform hover:scale-105 transition-all"
             >
-              Create New Timetable
+              + Create New Timetable
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="flex flex-wrap gap-8 p-4 justify-center">
             {timetables.length > 0 ? (
               timetables.map((timetable) => (
                 <div
                   key={timetable.id}
-                  className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  className="bg-white w-72 p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all border border-gray-200 flex flex-col items-center"
                 >
-                  <h3 className="text-xl font-semibold text-[#00695c] mb-4">{timetable.name}</h3>
-                  <div className="flex justify-between items-center">
-                    {/* View Timetable */}
+                  {/* Timetable Name */}
+                  <h3 className="text-2xl font-bold text-[#00695c] mb-4 font-serif">{timetable.name}</h3>
+
+                  {/* Action Buttons */}
+                  <div className="w-full flex flex-col space-y-3">
                     <Link
                       href={`/timetable/${timetable.id}`}
-                      className="inline-block bg-gradient-to-r from-[#00695c] to-[#8e44ad] text-white font-bold py-2 px-4 rounded hover:bg-[#4f94b0] transform hover:scale-105 transition-all"
+                      className="w-full text-center bg-gradient-to-r from-[#00695c] to-[#8e44ad] text-white font-semibold py-2 px-4 rounded-xl hover:from-[#005546] hover:to-[#7d3a98] transition-all transform hover:scale-105 shadow-md"
                     >
                       View Timetable
                     </Link>
 
-                    <div className="flex items-center gap-4">
-                      {/* Edit Timetable */}
-                      <Link
-                        href={`/form/${timetable.id}`}
-                        className="text-yellow-500 hover:text-yellow-600"
-                      >
-                        <FiEdit className="text-2xl" />
-                      </Link>
+                    <Link
+                      href={`/form/${timetable.id}`}
+                      className="w-full text-center bg-teal-100 text-[#00695c] font-semibold py-2 px-4 rounded-xl hover:bg-teal-200 transition-all transform hover:scale-105 shadow-md"
+                    >
+                      Edit Timetable
+                    </Link>
 
-                      {/* Edit Timetable Name */}
-                      <button
-                        onClick={() => handleEditTimetableName(timetable.id)}
-                        className="text-teal-500 hover:text-teal-600"
-                      >
-                        <FiSave className="text-2xl" />
-                      </button>
+                    <button
+                      onClick={() => handleEditTimetableName(timetable.id)}
+                      className="w-full text-center bg-purple-100 text-[#8e44ad] font-semibold py-2 px-4 rounded-xl hover:bg-purple-200 transition-all transform hover:scale-105 shadow-md"
+                    >
+                      Rename Timetable
+                    </button>
 
-                      {/* Delete Timetable */}
-                      <button
-                        onClick={() => handleDeleteTimetable(timetable.id)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <FiTrash2 className="text-2xl" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleDeleteTimetable(timetable.id)}
+                      className="w-full text-center bg-red-100 text-red-600 font-semibold py-2 px-4 rounded-xl hover:bg-red-200 transition-all transform hover:scale-105 shadow-md"
+                    >
+                      Delete Timetable
+                    </button>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-center text-gray-500">No timetables available. Create a new one!</p>
+              <p className="text-center text-gray-500 col-span-full py-12 text-lg font-medium">
+                No timetables available. Create a new one!
+              </p>
             )}
           </div>
         </div>

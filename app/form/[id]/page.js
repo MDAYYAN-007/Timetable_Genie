@@ -1,13 +1,14 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm, Controller, set, get } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useForm, Controller, get } from "react-hook-form";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import storeFormData from "@/actions/storeFromData";
+import { useSession } from "next-auth/react";
+import generateTimetable from "@/actions/generateTimetable";
 
 export default function TimetableForm() {
-
-  const router = useRouter();
 
   const {
     control,
@@ -17,6 +18,80 @@ export default function TimetableForm() {
     trigger,
     formState: { errors },
   } = useForm();
+
+  const params = useParams();
+  const id = params.id;
+
+  const router = useRouter();
+
+  const { data: session } = useSession();
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const updateFormValues = (data) => {
+      const { periods, satPeriods, shortBreak, lunchBreak, numSubjects, numLabs, subjects, labs, teachers, labTeachers, teacherAvailability, frequencies, labFrequencies } = data;
+
+      setValue("periods", periods);
+      setValue("satPeriods", satPeriods);
+      setValue("shortBreak", shortBreak);
+      setValue("lunchBreak", lunchBreak);
+      setValue("numSubjects", numSubjects);
+      setValue("numLabs", numLabs);
+      setValue("subjects", subjects);
+      setValue("frequencies", frequencies);
+      setValue("labs", labs);
+      setValue("labFrequencies", labFrequencies);
+      setValue("teachers", teachers);
+      setValue("labTeachers", labTeachers);
+      setValue("teacherAvailability", teacherAvailability);
+
+      setSubjects(subjects);
+      setLabNames(labs);
+      setSubs(numSubjects);
+      setLabs(numLabs);
+      setTeachers(teachers);
+      setLabTeachers(labTeachers);
+      setTeacherAvailability(teacherAvailability);
+    };
+
+    const fetchData = async () => {
+      try {
+        const response = await getFormData(id);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          updateFormValues(data.timetable);
+        }
+      } catch (error) {
+        console.error('Error fetching form data:', error);
+      }
+    };
+
+    if (session) {
+      fetchData();
+    } else {
+      const savedForms = localStorage.getItem("formData");
+      const parsedSavedForms = savedForms ? JSON.parse(savedForms) : [];
+      const form = parsedSavedForms.find((form) => form.id === id);
+
+      if (form) {
+        updateFormValues(form.data);
+      }
+    }
+
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+
+  }, [session, id, setValue]);
 
   const [subjects, setSubjects] = useState([]);
   const [labNames, setLabNames] = useState([]);
@@ -94,7 +169,7 @@ export default function TimetableForm() {
       }
 
       const currentLabFrequencies = getValues("labFrequencies") || [];
-
+      console.log("Current Lab Frequencies:", currentLabFrequencies.length);
       if (labs > currentLabFrequencies.length) {
         const newLabFrequencies = Array.from(
           { length: labs - currentLabFrequencies.length },
@@ -154,7 +229,7 @@ export default function TimetableForm() {
             const periods = day === "Sat" ? saturdayPeriods : weekdayPeriods;
             for (let period = 1; period <= periods; period++) {
               const key = `${teacher}-${day}-${period}`;
-              if (updatedTeacherAvailability[key] === undefined) {
+              if (updatedTeacherAvailability[key] == undefined) {
                 updatedTeacherAvailability[key] = true;
               }
             }
@@ -204,75 +279,43 @@ export default function TimetableForm() {
     }, 100);
   };
 
-  function generateTimetable(data) {
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const periodsPerDay = parseInt(data.periods);
-    const satPeriods = parseInt(data.satPeriods);
-    const shortBreak = parseInt(data.shortBreak);
-    const lunchBreak = parseInt(data.lunchBreak);
-    const subjects = data.subjects;
-    const frequencies = data.frequencies;
-    const labs = data.labs;
-    const teachers = data.teachers;
-    const labTeachers = data.labTeachers;
-    const teacherAvailability = data.teacherAvailability;
-
-    let timetable = {};
-    let subjectCount = subjects.reduce((acc, subj) => ({ ...acc, [subj]: 0 }), {});
-    let subjectTeacherMap = subjects.reduce((acc, subj, i) => ({ ...acc, [subj]: teachers[i] }), {});
-
-    days.forEach(day => {
-      let periods = day === "Sat" ? satPeriods : periodsPerDay;
-      let availableSlots = Array.from({ length: periods }, (_, i) => i).filter(i => (i + 1) !== shortBreak && (i + 1) !== lunchBreak);
-      timetable[day] = Array(periods).fill(null);
-
-      availableSlots.sort(() => Math.random() - 0.5);
-
-      // Assign Labs first
-      for (let i = 0; i < labs.length; i++) {
-        let lab = labs[i];
-        let teacher = labTeachers[i];
-
-        for (let j = 0; j < availableSlots.length - 1; j++) {
-          let slot1 = availableSlots[j];
-          let slot2 = availableSlots[j + 1];
-
-          if (slot2 === slot1 + 1 &&
-            teacherAvailability[`${teacher}-${day}-${slot1 + 1}`] &&
-            teacherAvailability[`${teacher}-${day}-${slot2 + 1}`]) {
-            timetable[day][slot1] = { lab, teacher };
-            timetable[day][slot2] = { lab, teacher };
-            availableSlots.splice(j, 2);
-            break;
-          }
-        }
-      }
-
-      // Assign Subjects while prioritizing first four periods
-      for (let period = 0; period < periods; period++) {
-        for (let subj of subjects) {
-          if (subjectCount[subj] < frequencies[subjects.indexOf(subj)]) {
-            let teacher = subjectTeacherMap[subj];
-            let key = `${teacher}-${day}-${period + 1}`;
-
-            if (teacherAvailability[key] && timetable[day][period] === null) {
-              timetable[day][period] = { subject: subj, teacher };
-              subjectCount[subj]++;
-              break;
-            }
-          }
-        }
-      }
-    });
-
-    return timetable;
-  }
-
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     console.log("Form Data:", data);
-    const timetable = generateTimetable(data);
-    console.log("Timetable:", timetable);
+
+    if (session) {
+      const result = await storeFormData(id, data);
+
+      if (result.success) {
+        // router.push(`/timetable/${id}`);
+        console.log("Form data stored successfully.");
+      } else {
+        console.error("Error storing form data:", result.message);
+      }
+    } else {
+      const savedForms = localStorage.getItem("formData");
+      const parsedSavedForms = savedForms ? JSON.parse(savedForms) : [];
+
+      const filteredForms = parsedSavedForms.filter((form) => form.id !== id);
+
+
+      const allForms = [...filteredForms, { id, data }];
+      localStorage.setItem("formData", JSON.stringify(allForms));
+
+      // router.push(`/timetable/${id}`);
+      console.log("Form data stored successfully.");
+      const timetable = await generateTimetable(data);
+      console.log("Generated Timetable from Form Data:", timetable);
+
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg font-semibold text-gray-700">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -357,7 +400,7 @@ export default function TimetableForm() {
                     name="shortBreak"
                     control={control}
                     defaultValue=""
-                    rules={{ required: true, min: 1, max: getValues("periods") || 1 }}
+                    rules={{ required: true, min: 1, max: 8 }}
                     render={({ field }) => (
                       <input
                         id="short-break"
@@ -385,7 +428,7 @@ export default function TimetableForm() {
                     name="lunchBreak"
                     control={control}
                     defaultValue=""
-                    rules={{ required: true, min: 1, max: getValues("periods") || 1 }}
+                    rules={{ required: true, min: 1, max: 8 }}
                     render={({ field }) => (
                       <input
                         id="lunch-break"
@@ -504,7 +547,6 @@ export default function TimetableForm() {
 
             </div>
           )}
-
 
           {/* Section 3: Subject Names And Frequencies */}
           {activeSection === "Subject Names And Frequencies" && (
@@ -653,7 +695,6 @@ export default function TimetableForm() {
               ))}
             </div>
           )}
-
 
           {/* Section 5: Teacher Names */}
           {activeSection === "Teacher Names" && (
