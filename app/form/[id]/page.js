@@ -286,7 +286,7 @@ export default function TimetableForm() {
       const result = await storeFormData(id, data);
 
       if (result.success) {
-        // router.push(`/timetable/${id}`);
+        router.push(`/timetable/${id}`);
         console.log("Form data stored successfully.");
       } else {
         console.error("Error storing form data:", result.message);
@@ -301,10 +301,7 @@ export default function TimetableForm() {
       const allForms = [...filteredForms, { id, data }];
       localStorage.setItem("formData", JSON.stringify(allForms));
 
-      // router.push(`/timetable/${id}`);
-      console.log("Form data stored successfully.");
-      const timetable = await generateTimetable(data);
-      console.log("Generated Timetable from Form Data:", timetable);
+      router.push(`/timetable/${id}`);
 
     }
   };
@@ -320,7 +317,7 @@ export default function TimetableForm() {
   return (
     <>
       <Navbar />
-      <div className="mx-auto mt-12 min-h-[85dvh] p-6 space-y-6">
+      <div className="mx-auto mt-[65px] min-h-[83dvh] p-6 space-y-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <h1 className="text-4xl font-bold text-center">Timetable Form</h1>
           <h2 className="text-2xl font-semibold text-gray-700">

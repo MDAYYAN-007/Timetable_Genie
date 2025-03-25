@@ -1,0 +1,3 @@
+I have almost completed my project
+So I just want to make it responsive i tailwind 
+But I have one condition, I dont make responsive using tailwinds default options but I have my own options

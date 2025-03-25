@@ -9,6 +9,7 @@ import getTimetables from '@/actions/getTimetables';
 import { query } from '@/actions/db.js';
 import storeTimeTable from '@/actions/storeTimetables';
 import getUserData from '@/actions/getUserData';
+import '@/app/timetables/page.css';
 
 const Timetables = () => {
   const [timetables, setTimetables] = useState([]);
@@ -24,14 +25,6 @@ const Timetables = () => {
   useEffect(() => {
     const loadTimetables = async () => {
       try {
-        setLoading(true);
-
-        if (session === undefined){
-          return(
-            <div>Loading...</div>
-          )
-        }
-
         if (session) {
           const timetables = await getTimetables(session.user.email);
           setTimetables(timetables);
@@ -50,7 +43,6 @@ const Timetables = () => {
 
     loadTimetables();
   }, [session]);
-
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -147,8 +139,57 @@ const Timetables = () => {
     }
   };
 
+  // Replace your current loading state return with this:
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-[93dvh] bg-gray-50 flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            {/* Animated SVG Loader */}
+            <svg
+              className="w-16 h-16 text-[#8e44ad] animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+
+            {/* Loading Text with Animation */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-[#00695c] animate-pulse">
+                Loading Your Timetables
+              </h2>
+              <p className="text-gray-600">
+                Gathering all your schedules...
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-64 bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-gradient-to-r from-[#00695c] to-[#8e44ad] h-2.5 rounded-full animate-progress"
+                style={{ width: '75%' }}
+              ></div>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
   }
 
   return (
