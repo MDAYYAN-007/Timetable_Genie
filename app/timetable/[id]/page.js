@@ -12,6 +12,7 @@ import { FaSync, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { LuRefreshCcw } from "react-icons/lu";
 import { useRouter } from "next/navigation";
 import checkDatabaseForTimetableId from "@/actions/checkDatabaseForTimetableId";
+import Link from "next/link";
 
 const Timetable = () => {
   const { data: session } = useSession();
@@ -312,7 +313,7 @@ const Timetable = () => {
                 </svg>
               </div>
               <h3 className="mt-3 text-lg font-medium text-gray-900">Timetable Not Found</h3>
-              <p className="mt-2 text-sm text-gray-500">The requested timetable doesn't exist.</p>
+              <p className="mt-2 text-sm text-gray-500">The requested timetable doesn&apos;t exist.</p>
               <button
                 onClick={() => router.push('/timetables')}
                 className="mt-4 px-6 py-3 bg-gradient-to-r from-[#8e44ad] to-[#3498db] text-white rounded-lg hover:shadow-lg transition-all"
@@ -344,7 +345,7 @@ const Timetable = () => {
               <div className="mt-4 flex flex-col items-center justify-center">
                 <div className="max-w-md text-center">
                   <p className="mb-6 text-gray-600">
-                    Oops! No timetable was generated. Let's try submitting the data again.
+                    Oops! No timetable was generated. Let&apos;s try submitting the data again.
                   </p>
                   <button
                     onClick={() => router.push(`/form/${id}`)}
@@ -357,7 +358,7 @@ const Timetable = () => {
                   </button>
 
                   <p className="mt-4 text-sm text-gray-500">
-                    or <a href="/" className="text-[#8e44ad] hover:underline">return home</a>
+                    or <Link href="/" className="text-[#8e44ad] hover:underline">return home</Link>
                   </p>
                 </div>
               </div>
@@ -372,20 +373,17 @@ const Timetable = () => {
   return (
     <>
       <Navbar />
-      {/* Main content area with responsive padding and spacing */}
       <div className="min-h-screen bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] pt-16 pb-16 max-sm:pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 max-md:py-6 max-sm:py-4">
-          {/* Header with responsive text sizes */}
           <div className="text-center mb-10 max-md:mb-8 max-sm:mb-6">
             <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#8e44ad] to-[#3498db] mb-4 max-2xl:text-3xl max-xl:text-3xl max-lg:text-2xl max-md:text-xl max-sm:text-lg">
               Your Generated Timetables
             </h1>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto max-xl:text-base max-lg:text-sm max-md:text-sm max-sm:text-xs">
-              Browse through the different timetable options we've created for you
+              Browse through the different timetable options we&apos;ve created for you
             </p>
           </div>
 
-          {/* Timetable Selector - made responsive with flex-wrap */}
           <div className="flex justify-center items-center mb-8 space-x-4 max-lg:flex-wrap max-lg:gap-4 max-lg:space-x-0">
             <button
               onClick={() => setSelectedTT(prev => Math.max(1, prev - 1))}
@@ -417,7 +415,6 @@ const Timetable = () => {
                 </div>
               ))}
 
-              {/* Add new timetable button (up to 3) */}
               {timetables.length < 3 && (
                 <button
                   onClick={() => createAnotherTimetable()}
@@ -437,7 +434,6 @@ const Timetable = () => {
             </button>
           </div>
 
-          {/* Timetable Display - made responsive with overflow */}
           <div className="bg-white rounded-xl shadow-xl overflow-hidden mb-8 max-md:rounded-lg max-sm:rounded-md">
             <div className="px-6 py-4 border-b border-gray-200 max-md:px-4 max-md:py-3 max-sm:px-3 max-sm:py-2">
               <h2 className="text-xl font-semibold text-gray-800 max-md:text-lg max-sm:text-base">

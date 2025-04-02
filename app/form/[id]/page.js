@@ -387,7 +387,7 @@ export default function TimetableForm() {
                 </svg>
               </div>
               <h3 className="mt-3 text-lg font-medium text-gray-900">Timetable Not Found</h3>
-              <p className="mt-2 text-sm text-gray-500">The requested timetable ID doesn't exist.</p>
+              <p className="mt-2 text-sm text-gray-500">The requested timetable ID doesn&apos;t exist.</p>
               <button
                 onClick={() => router.push('/timetables')}
                 className="mt-4 px-6 py-3 bg-gradient-to-r from-[#8e44ad] to-[#3498db] text-white rounded-lg hover:shadow-lg transition-all"
