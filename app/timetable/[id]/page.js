@@ -341,7 +341,7 @@ const Timetable = () => {
                 </svg>
               </div>
               <h3 className="mt-3 text-lg font-medium text-gray-900">No timetable generated</h3>
-              <p className="mt-2 text-sm text-gray-500">We couldn't find any timetable for this ID.</p>
+              <p className="mt-2 text-sm text-gray-500">We couldn&apos;t find any timetable for this ID.</p>
               <div className="mt-4 flex flex-col items-center justify-center">
                 <div className="max-w-md text-center">
                   <p className="mb-6 text-gray-600">
