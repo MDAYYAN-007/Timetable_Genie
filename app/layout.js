@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata = {
-  title: "Timetable Genei",
+  title: "Timetable Genie",
   description: "Timetable Genie is a web application to create timetables for educational institutions.",
   icons: {
     icon: "/favicon.png",
