@@ -14,12 +14,13 @@ const storeUserLoginData = async (user) => {
         //     )
         // `);
 
-        const checkResult = query(`SELECT * FROM timetable_users WHERE email = $1`, user.email);
+        const checkResult = await query(`SELECT * FROM timetable_users WHERE email = $1`, [user.email]);
 
         if (checkResult.rowCount > 0) {
             console.log('User already exists');
-            return;
-        } else {
+            return { success: false, message: 'User already exists' };
+        }
+        else {
             const hashedPassword = await bcrypt.hash(user.password, saltRounds);
             await query(
                 `INSERT INTO timetable_users(email, password) VALUES($1, $2)`,
@@ -28,7 +29,7 @@ const storeUserLoginData = async (user) => {
         }
 
     } catch (error) {
-
+        console.log('Error storing user data:', error);
     }
 
 };

@@ -9,12 +9,12 @@ const getFormData = async (id) => {
         if (result.rows.length > 0) {
             const formData = result.rows[0].formdata;
             // console.log('Form Data:', formData);
-            return typeof formData === 'string' ? JSON.parse(formData) : formData;
+            return { success: true, data: formData };
         } else {
             return { success: false, message: 'No form data found' };
         }
     } catch (error) {
-        console.error('Error getting form data:', error);
+        console.log('Error getting form data:', error);
         return { success: false, message: 'Failed to get form data', error };
     }
 };

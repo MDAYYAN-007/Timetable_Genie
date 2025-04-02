@@ -6,7 +6,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import storeFormData from "@/actions/storeFromData";
 import { useSession } from "next-auth/react";
-import generateTimetable from "@/actions/generateTimetable";
+import deleteExistingTimetables from "@/actions/deleteExistingTimetables";
+import getFormData from "@/actions/getFormData";
+import checkDatabaseForTimetableId from "@/actions/checkDatabaseForTimetableId";
 
 export default function TimetableForm() {
 
@@ -27,71 +29,113 @@ export default function TimetableForm() {
   const { data: session } = useSession();
 
   const [loading, setLoading] = useState(true);
+  const [idValid, setIdValid] = useState(null);
+  const [verificationComplete, setVerificationComplete] = useState(false);
+  const [deviceWidth, setDeviceWidth] = useState(0);
+
+  const updateFormValues = (data) => {
+    const { periods, satPeriods, shortBreak, lunchBreak, numSubjects, numLabs, subjects, labs, teachers, labTeachers, teacherAvailability, frequencies, labFrequencies } = data;
+
+    setValue("periods", periods);
+    setValue("satPeriods", satPeriods);
+    setValue("shortBreak", shortBreak);
+    setValue("lunchBreak", lunchBreak);
+    setValue("numSubjects", numSubjects);
+    setValue("numLabs", numLabs);
+    setValue("subjects", subjects);
+    setValue("frequencies", frequencies);
+    setValue("labs", labs);
+    setValue("labFrequencies", labFrequencies);
+    setValue("teachers", teachers);
+    setValue("labTeachers", labTeachers);
+    setValue("teacherAvailability", teacherAvailability);
+
+    setSubjects(subjects);
+    setLabNames(labs);
+    setSubs(numSubjects);
+    setLabs(numLabs);
+    setTeachers(teachers);
+    setLabTeachers(labTeachers);
+    setTeacherAvailability(teacherAvailability);
+  };
+
+  const checkLocalStorageForId = (id) => {
+    try {
+      const storedTimetables = JSON.parse(localStorage.getItem('timetables')) || [];
+      return storedTimetables.some(item => item.id === id);
+    } catch (error) {
+      console.error("LocalStorage ID check failed:", error);
+      return false;
+    }
+  };
 
   useEffect(() => {
-    setLoading(true);
-    const updateFormValues = (data) => {
-      const { periods, satPeriods, shortBreak, lunchBreak, numSubjects, numLabs, subjects, labs, teachers, labTeachers, teacherAvailability, frequencies, labFrequencies } = data;
+    const updateWidth = () => setDeviceWidth(window.innerWidth);
 
-      setValue("periods", periods);
-      setValue("satPeriods", satPeriods);
-      setValue("shortBreak", shortBreak);
-      setValue("lunchBreak", lunchBreak);
-      setValue("numSubjects", numSubjects);
-      setValue("numLabs", numLabs);
-      setValue("subjects", subjects);
-      setValue("frequencies", frequencies);
-      setValue("labs", labs);
-      setValue("labFrequencies", labFrequencies);
-      setValue("teachers", teachers);
-      setValue("labTeachers", labTeachers);
-      setValue("teacherAvailability", teacherAvailability);
+    updateWidth();
 
-      setSubjects(subjects);
-      setLabNames(labs);
-      setSubs(numSubjects);
-      setLabs(numLabs);
-      setTeachers(teachers);
-      setLabTeachers(labTeachers);
-      setTeacherAvailability(teacherAvailability);
-    };
+    window.addEventListener("resize", updateWidth);
 
+    return () => window.removeEventListener("resize", updateWidth);
+  
+  }, [])
+  
+
+  useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setVerificationComplete(false);
+
+      console.log("Session in useEffect of form:", session);
+
+      if (session === undefined) return;
+
       try {
-        const response = await getFormData(id);
+        if (session) {
+          const idPresent = await checkDatabaseForTimetableId(id);
+          if (!idPresent) {
+            setIdValid(false);
+            setVerificationComplete(true);
+            return;
+          }
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch: ${response.statusText}`);
-        }
+          const response = await getFormData(id);
+          if (!response.success) {
+            console.log(`Failed to fetch: ${response.message}`);
+            return;
+          }
+          updateFormValues(response.data);
+        } else {
+          const idPresent = checkLocalStorageForId(id);
+          if (!idPresent) {
+            setIdValid(false);
+            setVerificationComplete(true);
+            return;
+          }
 
-        const data = await response.json();
-        if (data.success) {
-          updateFormValues(data.timetable);
+          const savedForms = localStorage.getItem("formData");
+          const parsedSavedForms = savedForms ? JSON.parse(savedForms) : [];
+          const form = parsedSavedForms.find((form) => form.id === id);
+
+          if (form) {
+            updateFormValues(form.data);
+          }
         }
+        setVerificationComplete(true);
+        setIdValid(true);
       } catch (error) {
-        console.error('Error fetching form data:', error);
+        console.log("Error fetching form data:", error);
+        setIdValid(false);
+        setVerificationComplete(true);
+      } finally {
+        setVerificationComplete(true);
+        setLoading(false);
       }
     };
 
-    if (session) {
-      fetchData();
-    } else {
-      const savedForms = localStorage.getItem("formData");
-      const parsedSavedForms = savedForms ? JSON.parse(savedForms) : [];
-      const form = parsedSavedForms.find((form) => form.id === id);
+    fetchData();
 
-      if (form) {
-        updateFormValues(form.data);
-      }
-    }
-
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
-
-    return () => clearTimeout(timer);
-
-  }, [session, id, setValue]);
+  }, [session?.user?.email, id]);
 
   const [subjects, setSubjects] = useState([]);
   const [labNames, setLabNames] = useState([]);
@@ -169,7 +213,7 @@ export default function TimetableForm() {
       }
 
       const currentLabFrequencies = getValues("labFrequencies") || [];
-      console.log("Current Lab Frequencies:", currentLabFrequencies.length);
+      // console.log("Current Lab Frequencies:", currentLabFrequencies.length);
       if (labs > currentLabFrequencies.length) {
         const newLabFrequencies = Array.from(
           { length: labs - currentLabFrequencies.length },
@@ -280,16 +324,19 @@ export default function TimetableForm() {
   };
 
   const onSubmit = async (data) => {
-    console.log("Form Data:", data);
+    // console.log("Form Data:", data);
 
     if (session) {
       const result = await storeFormData(id, data);
 
+      // console.log("Result of storing formData in database:", result);
+
       if (result.success) {
+        await deleteExistingTimetables(id);
         router.push(`/timetable/${id}`);
-        console.log("Form data stored successfully.");
+        // console.log("Form data stored successfully.");
       } else {
-        console.error("Error storing form data:", result.message);
+        console.log("Error storing form data:", result.message);
       }
     } else {
       const savedForms = localStorage.getItem("formData");
@@ -297,32 +344,85 @@ export default function TimetableForm() {
 
       const filteredForms = parsedSavedForms.filter((form) => form.id !== id);
 
-
       const allForms = [...filteredForms, { id, data }];
       localStorage.setItem("formData", JSON.stringify(allForms));
+
+      const storedTimetables = JSON.parse(localStorage.getItem('generatedtimetables') || []);
+      const updatedTimetables = storedTimetables.filter(timetable => timetable.id !== id);
+      localStorage.setItem('generatedtimetables', JSON.stringify(updatedTimetables));
+      console.log('Deleted existing timetables from localStorage');
 
       router.push(`/timetable/${id}`);
 
     }
   };
 
-  if (loading) {
+  if (loading || !verificationComplete) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg font-semibold text-gray-700">Loading...</p>
-      </div>
+      <>
+        <Navbar />
+        <div className="min-h-[93dvh] bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] pt-20 flex justify-center items-center">
+          <div className="max-w-7xl mx-auto px-4py-12">
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+              <p className="mt-4 text-lg text-gray-600">Loading your formdata...</p>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  if (idValid === false) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-[93dvh] bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] pt-20 flex justify-center items-center">
+          <div className="mx-auto px-4 py-12">
+            <div className="text-center py-8">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h3 className="mt-3 text-lg font-medium text-gray-900">Timetable Not Found</h3>
+              <p className="mt-2 text-sm text-gray-500">The requested timetable ID doesn't exist.</p>
+              <button
+                onClick={() => router.push('/timetables')}
+                className="mt-4 px-6 py-3 bg-gradient-to-r from-[#8e44ad] to-[#3498db] text-white rounded-lg hover:shadow-lg transition-all"
+              >
+                Back to Your Timetables
+              </button>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
   return (
     <>
       <Navbar />
-      <div className="mx-auto mt-[65px] min-h-[83dvh] p-6 space-y-6">
+      <div className="mx-auto mt-[65px] min-h-[83dvh] p-6 space-y-6 max-xl:p-5 max-lg:p-4 max-md:p-3 max-sm:p-2">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <h1 className="text-4xl font-bold text-center">Timetable Form</h1>
-          <h2 className="text-2xl font-semibold text-gray-700">
-            {activeSection}
-          </h2>
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold font-geistsans text-gray-800 max-2xl:text-3xl max-xl:text-3xl max-lg:text-2xl max-md:text-xl max-sm:text-lg">
+              Timetable Form
+            </h1>
+            <h2 className="text-2xl font-semibold font-geistsans text-gray-600 max-xl:text-xl max-lg:text-lg max-md:text-base max-sm:text-sm">
+              {activeSection}
+            </h2>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="w-full bg-gray-200 rounded-full h-2.5 max-md:h-2">
+            <div
+              className="bg-blue-600 h-2.5 rounded-full max-md:h-2"
+              style={{ width: `${((currentIndex + 1) / sections.length) * 100}%` }}
+            ></div>
+          </div>
 
           {/* Section 1: Period Structure & Breaks */}
           {activeSection === "Period Structure & Breaks" && (
@@ -783,7 +883,7 @@ export default function TimetableForm() {
                                 toggleAvailability(teacherKey, day, period)
                               }
                             >
-                              Period {period}
+                              {(deviceWidth>550) ? "Period" : "P" } {period}
                             </button>
                           );
                         })}
@@ -796,10 +896,13 @@ export default function TimetableForm() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between gap-4 mt-8 max-md:mt-6">
             <button
               type="button"
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              className={`px-6 py-3 rounded-lg font-medium transition-all max-md:px-4 max-md:py-2 max-sm:text-sm ${currentIndex === 0
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
               onClick={handlePrev}
               disabled={currentIndex === 0}
             >
@@ -809,15 +912,15 @@ export default function TimetableForm() {
             {currentIndex === sections.length - 1 ? (
               <button
                 type="button"
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all max-md:px-4 max-md:py-2 max-sm:text-sm"
                 onClick={handleSubmit(onSubmit)}
               >
-                Submit
+                Generate Timetable
               </button>
             ) : (
               <button
                 type="button"
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all max-md:px-4 max-md:py-2 max-sm:text-sm"
                 onClick={handleNext}
               >
                 Next

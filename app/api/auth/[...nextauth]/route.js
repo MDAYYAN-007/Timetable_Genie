@@ -4,6 +4,11 @@ import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { query } from '@/actions/db';
 import storeUserLoginData from '@/actions/storeUserLoginData';
+import { migrateLocalDataToDB } from '@/actions/migrateLocalData';
+import bcrypt from 'bcrypt';
+import getUserData from '@/actions/getUserData';
+
+const saltRounds = 10;
 
 const handler = NextAuth({
     providers: [
@@ -15,42 +20,66 @@ const handler = NextAuth({
             name: 'Credentials',
             credentials: {
                 username: { label: 'Username', type: 'text' },
-                password: { label: 'Password', type: 'password' }
+                password: { label: 'Password', type: 'password' },
+                isSignUp: { label: 'Is Sign Up', type: 'hidden' }
             },
             async authorize(credentials) {
                 try {
-                    const result = await query(`SELECT * FROM timetable_users WHERE email = $1`, credentials.username);
-                    const user = result.rows[0];
+                    const isSignUp = credentials.isSignUp === 'true';
 
-                    if (!user) {
-                        throw new Error('No user found');
+                    if (isSignUp) {
+                        const checkResult = await query(`SELECT * FROM timetable_users WHERE email = $1`, [credentials.username]);
+                        console.log(checkResult.rows);
+                        if (checkResult.rowCount > 0) {
+                            throw new Error('User already exists');
+                        }
+                        const hashedPassword = await bcrypt.hash(credentials.password, saltRounds);
+                        console.log("hi")
+                        await query(`INSERT INTO timetable_users(email, password) VALUES($1, $2)`, [credentials.username, hashedPassword]);
+                        const result = await getUserData(credentials.username);
+                        // console.log(result);
+                        return {
+                            id: result.id,
+                            email: result.email,
+                            isNewUser: true
+                        };
+                    } else {
+                        const result = await query(`SELECT * FROM timetable_users WHERE email = $1`, [credentials.username]);
+                        console.log(result.rows);
+                        const user = result.rows[0];
+                        if (!user) {
+                            throw new Error('User not found !!');
+                        }
+                        const isValid = await bcrypt.compare(credentials.password, user.password);
+                        if (!isValid) {
+                            throw new Error('Incorrect Password !!');
+                        }
+                        return { id: user.id, email: user.email, isNewUser: false };
                     }
-
-                    const isValid = await bcrypt.compare(credentials.password, user.password);
-                    if (!isValid) {
-                        throw new Error('Password incorrect');
-                    }
-
-                    return { id: user.id, email: user.email };
 
                 }
                 catch (error) {
-                    throw new Error('Authentication failed');
+                    console.log(error);
+                    throw new Error(error.message || 'An error occurred');
                 }
             },
         })
     ],
     callbacks: {
         async signIn(user, account) {
-            try{
-                const loginProvider = account.provider;
+            try {
+                console.log("hi")
 
-                if (loginProvider === 'google') {
+                if (account?.provider === 'google') {
                     user.password = 'google';
                 }
-                await storeUserLoginData(user);
+
+                if (user.isNewUser) {
+                    await storeUserLoginData(user);
+                }
+                await migrateLocalDataToDB(user.email);
                 return true;
-            }catch(error){
+            } catch (error) {
                 console.error(error);
                 return false;
             }
@@ -58,7 +87,7 @@ const handler = NextAuth({
         async session({ session }) {
             try {
                 if (session.user && session.user.email) {
-                    const result = await query(`SELECT * FROM timetable_users WHERE email = $1`, session.user.email);
+                    const result = await query(`SELECT * FROM timetable_users WHERE email = $1`, [session.user.email]);
                     const user = result.rows[0];
                     session.user.id = user.id;
                     session.user.email = user.email;
