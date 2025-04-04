@@ -4,9 +4,9 @@ import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { query } from '@/actions/db';
 import storeUserLoginData from '@/actions/storeUserLoginData';
-import { migrateLocalDataToDB } from '@/actions/migrateLocalData';
 import bcrypt from 'bcrypt';
 import getUserData from '@/actions/getUserData';
+// import migrateLocalDataToDB from '@/actions/migrateLocalDataToDB';
 
 const saltRounds = 10;
 
@@ -34,19 +34,19 @@ const handler = NextAuth({
                             throw new Error('User already exists');
                         }
                         const hashedPassword = await bcrypt.hash(credentials.password, saltRounds);
-                        console.log("hi")
-                        await query(`INSERT INTO timetable_users(email, password) VALUES($1, $2)`, [credentials.username, hashedPassword]);
+                        const userData = {
+                            email: credentials.username,
+                            password: hashedPassword
+                        };
+                        await storeUserLoginData(userData);
                         const result = await getUserData(credentials.username);
-                        // console.log(result);
                         return {
                             id: result.id,
                             email: result.email,
                             isNewUser: true
                         };
                     } else {
-                        const result = await query(`SELECT * FROM timetable_users WHERE email = $1`, [credentials.username]);
-                        console.log(result.rows);
-                        const user = result.rows[0];
+                        const user = await getUserData(credentials.username);
                         if (!user) {
                             throw new Error('User not found !!');
                         }
@@ -77,7 +77,7 @@ const handler = NextAuth({
                 if (user.isNewUser) {
                     await storeUserLoginData(user);
                 }
-                await migrateLocalDataToDB(user.email);
+                // await migrateLocalDataToDB(user.id,user.email);
                 return true;
             } catch (error) {
                 console.error(error);
@@ -87,8 +87,7 @@ const handler = NextAuth({
         async session({ session }) {
             try {
                 if (session.user && session.user.email) {
-                    const result = await query(`SELECT * FROM timetable_users WHERE email = $1`, [session.user.email]);
-                    const user = result.rows[0];
+                    const user = await getUserData(session.user.email);
                     session.user.id = user.id;
                     session.user.email = user.email;
                 }

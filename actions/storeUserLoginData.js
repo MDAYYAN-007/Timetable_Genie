@@ -1,8 +1,5 @@
 "use server"
-import bcrypt from 'bcrypt';
 import { query } from './db';
-
-const saltRounds = 10;
 
 const storeUserLoginData = async (user) => {
     try {
@@ -21,10 +18,9 @@ const storeUserLoginData = async (user) => {
             return { success: false, message: 'User already exists' };
         }
         else {
-            const hashedPassword = await bcrypt.hash(user.password, saltRounds);
             await query(
                 `INSERT INTO timetable_users(email, password) VALUES($1, $2)`,
-                [user.email, hashedPassword]
+                [user.email, user.password]
             )
         }
 

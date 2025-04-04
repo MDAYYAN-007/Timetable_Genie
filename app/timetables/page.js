@@ -37,7 +37,6 @@ const Timetables = () => {
           setTimetables(timetables);
         } else {
           const savedTimetables = localStorage.getItem("timetables");
-          console.log(savedTimetables)
           setTimetables(savedTimetables ? JSON.parse(savedTimetables) : []);
         }
       } catch (error) {
