@@ -77,29 +77,28 @@ export default function TimetableForm() {
     window.addEventListener("resize", updateWidth);
 
     return () => window.removeEventListener("resize", updateWidth);
-  
+
   }, [])
-  
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setVerificationComplete(false);
 
-      console.log("Session in useEffect of form:", session);
+      // console.log("Session in useEffect of form:", session);
 
       if (session === undefined) return;
 
       try {
         if (session) {
-          const idPresent = await checkDatabaseForTimetableId(id);
+          const idPresent = await checkDatabaseForTimetableId(id,session.user.id);
           if (!idPresent) {
             setIdValid(false);
             setVerificationComplete(true);
             return;
           }
 
-          const response = await getFormData(id);
+          const response = await getFormData(id,session.user.id);
           if (!response.success) {
             console.log(`Failed to fetch: ${response.message}`);
             return;
@@ -327,14 +326,11 @@ export default function TimetableForm() {
     // console.log("Form Data:", data);
 
     if (session) {
-      const result = await storeFormData(id, data);
-
-      // console.log("Result of storing formData in database:", result);
+      const result = await storeFormData(id, data, session.user.id);
 
       if (result.success) {
-        await deleteExistingTimetables(id);
+        await deleteExistingTimetables(id,session.user.id);
         router.push(`/timetable/${id}`);
-        // console.log("Form data stored successfully.");
       } else {
         console.log("Error storing form data:", result.message);
       }
@@ -360,16 +356,18 @@ export default function TimetableForm() {
   if (loading || !verificationComplete) {
     return (
       <>
-        <Navbar />
-        <div className="min-h-[93dvh] bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] pt-20 flex justify-center items-center">
-          <div className="max-w-7xl mx-auto px-4py-12">
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
-              <p className="mt-4 text-lg text-gray-600">Loading your formdata...</p>
+        <div className="min-h-screen flex flex-col">
+          <Navbar />
+          <div className="bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] pt-20 flex justify-center items-center flex-1">
+            <div className="max-w-7xl mx-auto px-4py-12">
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+                <p className="mt-4 text-lg text-gray-600">Loading your formdata...</p>
+              </div>
             </div>
           </div>
+          <Footer />
         </div>
-        <Footer />
       </>
     );
   }
@@ -377,560 +375,564 @@ export default function TimetableForm() {
   if (idValid === false) {
     return (
       <>
-        <Navbar />
-        <div className="min-h-[93dvh] bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] pt-20 flex justify-center items-center">
-          <div className="mx-auto px-4 py-12">
-            <div className="text-center py-8">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+        <div className="min-h-screen flex flex-col">
+          <Navbar />
+          <div className="mt-16 bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef] flex justify-center items-center flex-1">
+            <div className="mx-auto px-4 py-12">
+              <div className="text-center py-8">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h3 className="mt-3 text-lg font-medium text-gray-900">Timetable Not Found</h3>
+                <p className="mt-2 text-sm text-gray-500">The requested timetable ID doesn&apos;t exist.</p>
+                <button
+                  onClick={() => router.push('/timetables')}
+                  className="mt-4 px-6 py-3 bg-gradient-to-r from-[#8e44ad] to-[#3498db] text-white rounded-lg hover:shadow-lg transition-all"
+                >
+                  Back to Your Timetables
+                </button>
               </div>
-              <h3 className="mt-3 text-lg font-medium text-gray-900">Timetable Not Found</h3>
-              <p className="mt-2 text-sm text-gray-500">The requested timetable ID doesn&apos;t exist.</p>
-              <button
-                onClick={() => router.push('/timetables')}
-                className="mt-4 px-6 py-3 bg-gradient-to-r from-[#8e44ad] to-[#3498db] text-white rounded-lg hover:shadow-lg transition-all"
-              >
-                Back to Your Timetables
-              </button>
             </div>
           </div>
+          <Footer />
         </div>
-        <Footer />
       </>
     );
   }
 
   return (
     <>
-      <Navbar />
-      <div className="mx-auto mt-[65px] min-h-[83dvh] p-6 space-y-6 max-xl:p-5 max-lg:p-4 max-md:p-3 max-sm:p-2">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold font-geistsans text-gray-800 max-2xl:text-3xl max-xl:text-3xl max-lg:text-2xl max-md:text-xl max-sm:text-lg">
-              Timetable Form
-            </h1>
-            <h2 className="text-2xl font-semibold font-geistsans text-gray-600 max-xl:text-xl max-lg:text-lg max-md:text-base max-sm:text-sm">
-              {activeSection}
-            </h2>
-          </div>
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="mx-auto mt-[65px] flex-1 p-6 space-y-6 max-xl:p-5 max-lg:p-4 max-md:p-3 max-sm:p-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-4xl font-bold font-geistsans text-gray-800 max-2xl:text-3xl max-xl:text-3xl max-lg:text-2xl max-md:text-xl max-sm:text-lg">
+                Timetable Form
+              </h1>
+              <h2 className="text-2xl font-semibold font-geistsans text-gray-600 max-xl:text-xl max-lg:text-lg max-md:text-base max-sm:text-sm">
+                {activeSection}
+              </h2>
+            </div>
 
-          {/* Progress Indicator */}
-          <div className="w-full bg-gray-200 rounded-full h-2.5 max-md:h-2">
-            <div
-              className="bg-blue-600 h-2.5 rounded-full max-md:h-2"
-              style={{ width: `${((currentIndex + 1) / sections.length) * 100}%` }}
-            ></div>
-          </div>
+            {/* Progress Indicator */}
+            <div className="w-full bg-gray-200 rounded-full h-2.5 max-md:h-2">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full max-md:h-2"
+                style={{ width: `${((currentIndex + 1) / sections.length) * 100}%` }}
+              ></div>
+            </div>
 
-          {/* Section 1: Period Structure & Breaks */}
-          {activeSection === "Period Structure & Breaks" && (
-            <div className="p-4 border border-gray-300 rounded-lg shadow-md bg-white space-y-6">
+            {/* Section 1: Period Structure & Breaks */}
+            {activeSection === "Period Structure & Breaks" && (
+              <div className="p-4 border border-gray-300 rounded-lg shadow-md bg-white space-y-6">
 
-              {/* Number of Periods */}
-              <div className="grid grid-cols-1 max-md:grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Number of Periods */}
+                <div className="grid grid-cols-1 max-md:grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <label htmlFor="number-of-periods" className="block font-semibold text-gray-700">
+                      Number of Periods on Weekdays
+                    </label>
+                    <Controller
+                      name="periods"
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: true, min: 1, max: 8 }}
+                      render={({ field }) => (
+                        <input
+                          id="number-of-periods"
+                          type="number"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="Enter a value between 1 and 8"
+                          {...field}
+                        />
+                      )}
+                    />
+                    {errors.periods && (
+                      <p className="text-red-500 text-sm">
+                        {errors.periods.type === "required"
+                          ? "This field is required."
+                          : "Value must be between 1 and 8."}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <label htmlFor="number-of-periods-on-saturday" className="block font-semibold text-gray-700">
+                      Number of Periods on Saturday
+                    </label>
+                    <Controller
+                      name="satPeriods"
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: true, min: 0, max: 8 }}
+                      render={({ field }) => (
+                        <input
+                          id="number-of-periods-on-saturday"
+                          type="number"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="Enter 0 if Saturday is a holiday"
+                          {...field}
+                        />
+                      )}
+                    />
+                    {errors.satPeriods && (
+                      <p className="text-red-500 text-sm">
+                        {errors.satPeriods.type === "required"
+                          ? "This field is required."
+                          : "Value must be between 0 and 8."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Breaks Configuration */}
+                <div className="grid grid-cols-1 max-md:grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <label htmlFor="short-break" className="block font-semibold text-gray-700">
+                      Short Break After Which Period?
+                    </label>
+                    <Controller
+                      name="shortBreak"
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: true, min: 1, max: 8 }}
+                      render={({ field }) => (
+                        <input
+                          id="short-break"
+                          type="number"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="Enter a value between 1 and number of periods"
+                          {...field}
+                        />
+                      )}
+                    />
+                    {errors.shortBreak && (
+                      <p className="text-red-500 text-sm">
+                        {errors.shortBreak.type === "required"
+                          ? "This field is required."
+                          : "Value must be between 1 and number of periods."}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <label htmlFor="lunch-break" className="block font-semibold text-gray-700">
+                      Lunch Break After Which Period?
+                    </label>
+                    <Controller
+                      name="lunchBreak"
+                      control={control}
+                      defaultValue=""
+                      rules={{ required: true, min: 1, max: 8 }}
+                      render={({ field }) => (
+                        <input
+                          id="lunch-break"
+                          type="number"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="Enter a value between 1 and number of periods"
+                          {...field}
+                        />
+                      )}
+                    />
+                    {errors.lunchBreak && (
+                      <p className="text-red-500 text-sm">
+                        {errors.lunchBreak.type === "required"
+                          ? "This field is required."
+                          : "Value must be between 1 and number of periods."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-md">
+                  <p className="text-sm">
+                    Please specify the <strong>short break</strong> and <strong>lunch break</strong> carefully to ensure they do not interfere with lab hours.
+                  </p>
+                </div>
+
+              </div>
+            )}
+
+
+            {/* Section 2: Number of Subjects & Labs */}
+            {activeSection === "Number of Subjects" && (
+              <div className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white space-y-4">
+                {/* Number of Subjects */}
                 <div className="space-y-3">
-                  <label htmlFor="number-of-periods" className="block font-semibold text-gray-700">
-                    Number of Periods on Weekdays
+                  <label
+                    htmlFor="number-of-subjects"
+                    className="block font-semibold text-gray-700"
+                  >
+                    Number of Subjects
                   </label>
                   <Controller
-                    name="periods"
+                    name="numSubjects"
                     control={control}
                     defaultValue=""
                     rules={{ required: true, min: 1, max: 8 }}
                     render={({ field }) => (
                       <input
-                        id="number-of-periods"
+                        id="number-of-subjects"
                         type="number"
                         className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         placeholder="Enter a value between 1 and 8"
+                        autoFocus
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          const value = Number(e.target.value);
+                          setSubs(value);
+                        }}
                       />
                     )}
                   />
-                  {errors.periods && (
+                  {errors.numSubjects && (
                     <p className="text-red-500 text-sm">
-                      {errors.periods.type === "required"
+                      {errors.numSubjects.type === "required"
                         ? "This field is required."
                         : "Value must be between 1 and 8."}
                     </p>
                   )}
                 </div>
 
+                {/* Number of Labs */}
                 <div className="space-y-3">
-                  <label htmlFor="number-of-periods-on-saturday" className="block font-semibold text-gray-700">
-                    Number of Periods on Saturday
+                  <label
+                    htmlFor="number-of-labs"
+                    className="block font-semibold text-gray-700"
+                  >
+                    Number of Labs
                   </label>
                   <Controller
-                    name="satPeriods"
+                    name="numLabs"
                     control={control}
                     defaultValue=""
-                    rules={{ required: true, min: 0, max: 8 }}
+                    rules={{ required: true, min: 0, max: 4 }}
                     render={({ field }) => (
                       <input
-                        id="number-of-periods-on-saturday"
+                        id="number-of-labs"
                         type="number"
                         className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Enter 0 if Saturday is a holiday"
+                        placeholder="Enter a value between 0 and 4"
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          const value = Number(e.target.value);
+                          setLabs(value);
+                        }}
                       />
                     )}
                   />
-                  {errors.satPeriods && (
+                  {errors.numLabs && (
                     <p className="text-red-500 text-sm">
-                      {errors.satPeriods.type === "required"
+                      {errors.numLabs.type === "required"
                         ? "This field is required."
-                        : "Value must be between 0 and 8."}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Breaks Configuration */}
-              <div className="grid grid-cols-1 max-md:grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <label htmlFor="short-break" className="block font-semibold text-gray-700">
-                    Short Break After Which Period?
-                  </label>
-                  <Controller
-                    name="shortBreak"
-                    control={control}
-                    defaultValue=""
-                    rules={{ required: true, min: 1, max: 8 }}
-                    render={({ field }) => (
-                      <input
-                        id="short-break"
-                        type="number"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Enter a value between 1 and number of periods"
-                        {...field}
-                      />
-                    )}
-                  />
-                  {errors.shortBreak && (
-                    <p className="text-red-500 text-sm">
-                      {errors.shortBreak.type === "required"
-                        ? "This field is required."
-                        : "Value must be between 1 and number of periods."}
+                        : "Value must be between 0 and 4."}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <label htmlFor="lunch-break" className="block font-semibold text-gray-700">
-                    Lunch Break After Which Period?
-                  </label>
-                  <Controller
-                    name="lunchBreak"
-                    control={control}
-                    defaultValue=""
-                    rules={{ required: true, min: 1, max: 8 }}
-                    render={({ field }) => (
-                      <input
-                        id="lunch-break"
-                        type="number"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Enter a value between 1 and number of periods"
-                        {...field}
-                      />
-                    )}
-                  />
-                  {errors.lunchBreak && (
-                    <p className="text-red-500 text-sm">
-                      {errors.lunchBreak.type === "required"
-                        ? "This field is required."
-                        : "Value must be between 1 and number of periods."}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Info Box */}
-              <div className="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-md">
-                <p className="text-sm">
-                  Please specify the <strong>short break</strong> and <strong>lunch break</strong> carefully to ensure they do not interfere with lab hours.
-                </p>
-              </div>
-
-            </div>
-          )}
-
-
-          {/* Section 2: Number of Subjects & Labs */}
-          {activeSection === "Number of Subjects" && (
-            <div className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white space-y-4">
-              {/* Number of Subjects */}
-              <div className="space-y-3">
-                <label
-                  htmlFor="number-of-subjects"
-                  className="block font-semibold text-gray-700"
-                >
-                  Number of Subjects
-                </label>
-                <Controller
-                  name="numSubjects"
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: true, min: 1, max: 8 }}
-                  render={({ field }) => (
-                    <input
-                      id="number-of-subjects"
-                      type="number"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Enter a value between 1 and 8"
-                      autoFocus
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        const value = Number(e.target.value);
-                        setSubs(value);
-                      }}
-                    />
-                  )}
-                />
-                {errors.numSubjects && (
-                  <p className="text-red-500 text-sm">
-                    {errors.numSubjects.type === "required"
-                      ? "This field is required."
-                      : "Value must be between 1 and 8."}
+                {/* Note about Lab Hours */}
+                <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
+                  <p className="text-sm">
+                    Each lab session will be allotted for <strong>2 hours</strong>.
                   </p>
-                )}
+                </div>
+
               </div>
-
-              {/* Number of Labs */}
-              <div className="space-y-3">
-                <label
-                  htmlFor="number-of-labs"
-                  className="block font-semibold text-gray-700"
-                >
-                  Number of Labs
-                </label>
-                <Controller
-                  name="numLabs"
-                  control={control}
-                  defaultValue=""
-                  rules={{ required: true, min: 0, max: 4 }}
-                  render={({ field }) => (
-                    <input
-                      id="number-of-labs"
-                      type="number"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Enter a value between 0 and 4"
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        const value = Number(e.target.value);
-                        setLabs(value);
-                      }}
-                    />
-                  )}
-                />
-                {errors.numLabs && (
-                  <p className="text-red-500 text-sm">
-                    {errors.numLabs.type === "required"
-                      ? "This field is required."
-                      : "Value must be between 0 and 4."}
-                  </p>
-                )}
-              </div>
-
-              {/* Note about Lab Hours */}
-              <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
-                <p className="text-sm">
-                  Each lab session will be allotted for <strong>2 hours</strong>.
-                </p>
-              </div>
-
-            </div>
-          )}
-
-          {/* Section 3: Subject Names And Frequencies */}
-          {activeSection === "Subject Names And Frequencies" && (
-            <div className="space-y-6">
-              {subjects.map((_, index) => (
-                <div
-                  key={index}
-                  className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6"
-                >
-                  {/* Subject Name Input */}
-                  <div className="flex-1">
-                    <label
-                      htmlFor={`subject-${index}`}
-                      className="block text-sm font-semibold text-gray-700 mb-2"
-                    >
-                      Subject {index + 1}
-                    </label>
-                    <Controller
-                      name={`subjects[${index}]`}
-                      control={control}
-                      defaultValue=""
-                      rules={{ required: "Subject name is required." }}
-                      render={({ field }) => (
-                        <input
-                          id={`subject-${index}`}
-                          type="text"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          placeholder={`Enter subject name...`}
-                          {...field}
-                        />
-                      )}
-                    />
-                    {errors.subjects?.[index] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.subjects[index]?.message || "Invalid subject name."}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Frequency Input */}
-                  <div className="w-full md:w-auto">
-                    <label
-                      htmlFor={`frequency-${index}`}
-                      className="block text-sm font-semibold text-gray-700 mb-2"
-                    >
-                      Frequency
-                    </label>
-                    <Controller
-                      name={`frequencies[${index}]`}
-                      control={control}
-                      defaultValue="1"
-                      rules={{
-                        required: "Frequency is required.",
-                        min: { value: 1, message: "Frequency must be at least 1." },
-                      }}
-                      render={({ field }) => (
-                        <input
-                          id={`frequency-${index}`}
-                          type="number"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          {...field}
-                        />
-                      )}
-                    />
-                    {errors.frequencies?.[index] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.frequencies[index]?.message || "Invalid frequency."}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Section 4: Lab Names And Frequencies */}
-          {activeSection === "Lab Names And Frequencies" && (
-            <div className="space-y-6">
-              {labNames.map((_, index) => (
-                <div
-                  key={index}
-                  className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6"
-                >
-                  {/* Lab Name Input */}
-                  <div className="flex-1">
-                    <label
-                      htmlFor={`lab-${index}`}
-                      className="block text-sm font-semibold text-gray-700 mb-2"
-                    >
-                      Lab {index + 1}
-                    </label>
-                    <Controller
-                      name={`labs[${index}]`}
-                      control={control}
-                      defaultValue=""
-                      rules={{ required: "Lab name is required." }}
-                      render={({ field }) => (
-                        <input
-                          id={`lab-${index}`}
-                          type="text"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          placeholder={`Enter lab name...`}
-                          {...field}
-                        />
-                      )}
-                    />
-                    {errors.labs?.[index] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.labs[index]?.message || "Invalid lab name."}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Frequency Input */}
-                  <div className="w-full md:w-auto">
-                    <label
-                      htmlFor={`lab-frequency-${index}`}
-                      className="block text-sm font-semibold text-gray-700 mb-2"
-                    >
-                      Frequency
-                    </label>
-                    <Controller
-                      name={`labFrequencies[${index}]`}
-                      control={control}
-                      defaultValue="1"
-                      rules={{
-                        required: "Frequency is required.",
-                        min: { value: 1, message: "Frequency must be at least 1." },
-                      }}
-                      render={({ field }) => (
-                        <input
-                          id={`lab-frequency-${index}`}
-                          type="number"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          {...field}
-                        />
-                      )}
-                    />
-                    {errors.labFrequencies?.[index] && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.labFrequencies[index]?.message || "Invalid frequency."}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Section 5: Teacher Names */}
-          {activeSection === "Teacher Names" && (
-            <div className="space-y-6">
-              {subjects.map((subject, index) => (
-                <div
-                  key={index}
-                  className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white"
-                >
-                  <label className="block font-semibold text-gray-700 mb-2">
-                    Teacher for {subject || `Subject ${index + 1}`}
-                  </label>
-                  <Controller
-                    name={`teachers[${index}]`}
-                    control={control}
-                    defaultValue=" "
-                    render={({ field }) => (
-                      <input
-                        type="text"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Enter teacher name..."
-                        {...field}
-                      />
-                    )}
-                  />
-                </div>
-              ))}
-              {labNames.map((lab, index) => (
-                <div
-                  key={index}
-                  className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white"
-                >
-                  <label className="block font-semibold text-gray-700 mb-2">
-                    Teacher for {lab || `Lab ${index + 1}`}
-                  </label>
-                  <Controller
-                    name={`labTeachers[${index}]`}
-                    control={control}
-                    defaultValue=" "
-                    render={({ field }) => (
-                      <input
-                        type="text"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Enter teacher name..."
-                        {...field}
-                      />
-                    )}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Section 6: Teacher Unavailability */}
-          {activeSection === "Teacher Unavailability" && (
-            <div className="space-y-6">
-              {[...teachers, ...labTeachers].map((teacher, index) => (
-                <div key={index} className="bg-white p-4 rounded-lg shadow-md">
-                  <label className="block text-lg font-semibold text-gray-800 mb-4">
-                    Unavailability for {teacher || `Teacher ${index + 1}`}
-                  </label>
-                  <div className="grid grid-cols-6 gap-4">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-
-                      <div key={day} className="col-span-1">
-                        <p className="text-sm font-medium text-center text-gray-700 mb-2">
-                          {day}
-                        </p>
-                        {Array.from(
-                          { length: day === "Sat" ? getValues("satPeriods") || 0 : getValues("periods") || 1 },
-                          (_, i) => i + 1
-                        ).map((period) => {
-                          const teacherKey = teacher;
-                          const isAvailable =
-                            teacherKey &&
-                              teacherAvailability &&
-                              teacherAvailability[`${teacherKey}-${day}-${period}`] !== undefined
-                              ? teacherAvailability[`${teacherKey}-${day}-${period}`]
-                              : false;
-                          return (
-                            <button
-                              key={period}
-                              type="button"
-                              className={`w-full p-2 text-sm mb-2 font-medium rounded transition-all duration-200 ${isAvailable
-                                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                : "bg-red-500 text-white hover:bg-red-600"
-                                }`}
-                              onClick={() =>
-                                toggleAvailability(teacherKey, day, period)
-                              }
-                            >
-                              {(deviceWidth>550) ? "Period" : "P" } {period}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between gap-4 mt-8 max-md:mt-6">
-            <button
-              type="button"
-              className={`px-6 py-3 rounded-lg font-medium transition-all max-md:px-4 max-md:py-2 max-sm:text-sm ${currentIndex === 0
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              onClick={handlePrev}
-              disabled={currentIndex === 0}
-            >
-              Previous
-            </button>
-
-            {currentIndex === sections.length - 1 ? (
-              <button
-                type="button"
-                className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all max-md:px-4 max-md:py-2 max-sm:text-sm"
-                onClick={handleSubmit(onSubmit)}
-              >
-                Generate Timetable
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all max-md:px-4 max-md:py-2 max-sm:text-sm"
-                onClick={handleNext}
-              >
-                Next
-              </button>
             )}
-          </div>
 
-        </form>
+            {/* Section 3: Subject Names And Frequencies */}
+            {activeSection === "Subject Names And Frequencies" && (
+              <div className="space-y-6">
+                {subjects.map((_, index) => (
+                  <div
+                    key={index}
+                    className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6"
+                  >
+                    {/* Subject Name Input */}
+                    <div className="flex-1">
+                      <label
+                        htmlFor={`subject-${index}`}
+                        className="block text-sm font-semibold text-gray-700 mb-2"
+                      >
+                        Subject {index + 1}
+                      </label>
+                      <Controller
+                        name={`subjects[${index}]`}
+                        control={control}
+                        defaultValue=""
+                        rules={{ required: "Subject name is required." }}
+                        render={({ field }) => (
+                          <input
+                            id={`subject-${index}`}
+                            type="text"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder={`Enter subject name...`}
+                            {...field}
+                          />
+                        )}
+                      />
+                      {errors.subjects?.[index] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.subjects[index]?.message || "Invalid subject name."}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Frequency Input */}
+                    <div className="w-full md:w-auto">
+                      <label
+                        htmlFor={`frequency-${index}`}
+                        className="block text-sm font-semibold text-gray-700 mb-2"
+                      >
+                        Frequency
+                      </label>
+                      <Controller
+                        name={`frequencies[${index}]`}
+                        control={control}
+                        defaultValue="1"
+                        rules={{
+                          required: "Frequency is required.",
+                          min: { value: 1, message: "Frequency must be at least 1." },
+                        }}
+                        render={({ field }) => (
+                          <input
+                            id={`frequency-${index}`}
+                            type="number"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            {...field}
+                          />
+                        )}
+                      />
+                      {errors.frequencies?.[index] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.frequencies[index]?.message || "Invalid frequency."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Section 4: Lab Names And Frequencies */}
+            {activeSection === "Lab Names And Frequencies" && (
+              <div className="space-y-6">
+                {labNames.map((_, index) => (
+                  <div
+                    key={index}
+                    className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6"
+                  >
+                    {/* Lab Name Input */}
+                    <div className="flex-1">
+                      <label
+                        htmlFor={`lab-${index}`}
+                        className="block text-sm font-semibold text-gray-700 mb-2"
+                      >
+                        Lab {index + 1}
+                      </label>
+                      <Controller
+                        name={`labs[${index}]`}
+                        control={control}
+                        defaultValue=""
+                        rules={{ required: "Lab name is required." }}
+                        render={({ field }) => (
+                          <input
+                            id={`lab-${index}`}
+                            type="text"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder={`Enter lab name...`}
+                            {...field}
+                          />
+                        )}
+                      />
+                      {errors.labs?.[index] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.labs[index]?.message || "Invalid lab name."}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Frequency Input */}
+                    <div className="w-full md:w-auto">
+                      <label
+                        htmlFor={`lab-frequency-${index}`}
+                        className="block text-sm font-semibold text-gray-700 mb-2"
+                      >
+                        Frequency
+                      </label>
+                      <Controller
+                        name={`labFrequencies[${index}]`}
+                        control={control}
+                        defaultValue="1"
+                        rules={{
+                          required: "Frequency is required.",
+                          min: { value: 1, message: "Frequency must be at least 1." },
+                        }}
+                        render={({ field }) => (
+                          <input
+                            id={`lab-frequency-${index}`}
+                            type="number"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            {...field}
+                          />
+                        )}
+                      />
+                      {errors.labFrequencies?.[index] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors.labFrequencies[index]?.message || "Invalid frequency."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Section 5: Teacher Names */}
+            {activeSection === "Teacher Names" && (
+              <div className="space-y-6">
+                {subjects.map((subject, index) => (
+                  <div
+                    key={index}
+                    className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white"
+                  >
+                    <label className="block font-semibold text-gray-700 mb-2">
+                      Teacher for {subject || `Subject ${index + 1}`}
+                    </label>
+                    <Controller
+                      name={`teachers[${index}]`}
+                      control={control}
+                      defaultValue=" "
+                      render={({ field }) => (
+                        <input
+                          type="text"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="Enter teacher name..."
+                          {...field}
+                        />
+                      )}
+                    />
+                  </div>
+                ))}
+                {labNames.map((lab, index) => (
+                  <div
+                    key={index}
+                    className="p-4 border border-gray-300 rounded-lg shadow-sm bg-white"
+                  >
+                    <label className="block font-semibold text-gray-700 mb-2">
+                      Teacher for {lab || `Lab ${index + 1}`}
+                    </label>
+                    <Controller
+                      name={`labTeachers[${index}]`}
+                      control={control}
+                      defaultValue=" "
+                      render={({ field }) => (
+                        <input
+                          type="text"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          placeholder="Enter teacher name..."
+                          {...field}
+                        />
+                      )}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Section 6: Teacher Unavailability */}
+            {activeSection === "Teacher Unavailability" && (
+              <div className="space-y-6">
+                {[...teachers, ...labTeachers].map((teacher, index) => (
+                  <div key={index} className="bg-white p-4 rounded-lg shadow-md">
+                    <label className="block text-lg font-semibold text-gray-800 mb-4">
+                      Unavailability for {teacher || `Teacher ${index + 1}`}
+                    </label>
+                    <div className="grid grid-cols-6 gap-4">
+                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+
+                        <div key={day} className="col-span-1">
+                          <p className="text-sm font-medium text-center text-gray-700 mb-2">
+                            {day}
+                          </p>
+                          {Array.from(
+                            { length: day === "Sat" ? getValues("satPeriods") || 0 : getValues("periods") || 1 },
+                            (_, i) => i + 1
+                          ).map((period) => {
+                            const teacherKey = teacher;
+                            const isAvailable =
+                              teacherKey &&
+                                teacherAvailability &&
+                                teacherAvailability[`${teacherKey}-${day}-${period}`] !== undefined
+                                ? teacherAvailability[`${teacherKey}-${day}-${period}`]
+                                : false;
+                            return (
+                              <button
+                                key={period}
+                                type="button"
+                                className={`w-full p-2 text-sm mb-2 font-medium rounded transition-all duration-200 ${isAvailable
+                                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  : "bg-red-500 text-white hover:bg-red-600"
+                                  }`}
+                                onClick={() =>
+                                  toggleAvailability(teacherKey, day, period)
+                                }
+                              >
+                                {(deviceWidth > 550) ? "Period" : "P"} {period}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between gap-4 mt-8 max-md:mt-6">
+              <button
+                type="button"
+                className={`px-6 py-3 rounded-lg font-medium transition-all max-md:px-4 max-md:py-2 max-sm:text-sm ${currentIndex === 0
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                onClick={handlePrev}
+                disabled={currentIndex === 0}
+              >
+                Previous
+              </button>
+
+              {currentIndex === sections.length - 1 ? (
+                <button
+                  type="button"
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all max-md:px-4 max-md:py-2 max-sm:text-sm"
+                  onClick={handleSubmit(onSubmit)}
+                >
+                  Generate Timetable
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all max-md:px-4 max-md:py-2 max-sm:text-sm"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
+              )}
+            </div>
+
+          </form>
+        </div>
+        <Footer />
       </div>
-      <Footer />
     </>
   );
 }

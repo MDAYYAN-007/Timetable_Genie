@@ -1,9 +1,9 @@
 'use server';
 import { query } from "@/actions/db";
 
-const getGeneratedTimetables = async (id) => {
+const getGeneratedTimetables = async (id, usedId) => {
     try {
-        const result = await query(`SELECT timetable_id, generated_timetable, tt_no FROM generated_timetables WHERE timetable_id = $1`, [id]);
+        const result = await query(`SELECT formdata_id, generated_timetable, tt_no FROM generated_timetables WHERE formdata_id = $1 AND user_id = $2`, [id, usedId]);
 
         if (!result.rows.length) {
             return { success: false, message: "No generated timetables found", data: [] };
@@ -11,7 +11,7 @@ const getGeneratedTimetables = async (id) => {
 
         return {
             success: true, data: result.rows.map(row => ({
-                id: row.timetable_id,
+                id: row.formdata_id,
                 timetable: row.generated_timetable,
                 tt_no: row.tt_no
             }))

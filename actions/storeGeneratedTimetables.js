@@ -1,28 +1,30 @@
 'use server';
 import { query } from "@/actions/db";
 
-const storeGeneratedTimetables = async (timetable, id, tt_no) => {
+const storeGeneratedTimetables = async (timetable, id, tt_no, usedId) => {
     try {
         const jsonTimetable = JSON.stringify(timetable);
 
-//         await query(`DROP TABLE IF EXISTS generated_timetables`);
+        //Deleting table if exists
+        // await query(`DROP TABLE IF EXISTS generated_timetables`);
 
-//         await query(`
-//     CREATE TABLE generated_timetables (
-//         id SERIAL PRIMARY KEY,
-//         generated_timetable JSONB NOT NULL,
-//         timetable_id BIGINT NOT NULL,
-//         tt_no INT NOT NULL, 
-//         FOREIGN KEY (timetable_id) REFERENCES timetable_formdata(id) ON DELETE CASCADE
-//     )
-// `);
-
+        //Creating table if not exists
+        await query(`
+            CREATE TABLE IF NOT EXISTS generated_timetables (
+                id SERIAL PRIMARY KEY,
+                generated_timetable JSONB NOT NULL,
+                formdata_id BIGINT NOT NULL,
+                tt_no INT NOT NULL, 
+                user_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES timetable_users(id) ON DELETE CASCADE
+            );`
+        );
 
         // Check if a timetable with this tt_no already exists
         const existing = await query(
             `SELECT * FROM generated_timetables 
-             WHERE timetable_id = $1 AND tt_no = $2`,
-            [id, tt_no]
+             WHERE formdata_id = $1 AND tt_no = $2 AND user_id = $3`,
+            [id, tt_no, usedId]
         );
 
         if (existing.rows.length > 0) {
@@ -30,22 +32,25 @@ const storeGeneratedTimetables = async (timetable, id, tt_no) => {
             await query(
                 `UPDATE generated_timetables 
                  SET generated_timetable = $1
-                 WHERE timetable_id = $2 AND tt_no = $3`,
-                [jsonTimetable, id, tt_no]
+                 WHERE formdata_id = $2 AND tt_no = $3 AND user_id = $4`,
+                [jsonTimetable, id, tt_no, usedId]
             );
+
             return {
                 success: true,
                 message: "Generated timetable updated successfully"
             };
+
         } else {
             // Insert new record
             await query(
                 `INSERT INTO generated_timetables(
                     generated_timetable, 
-                    timetable_id,
-                    tt_no
-                ) VALUES($1, $2, $3)`,
-                [jsonTimetable, id, tt_no]
+                    formdata_id,
+                    tt_no,
+                    user_id
+                ) VALUES($1, $2, $3, $4)`,
+                [jsonTimetable, id, tt_no, usedId]
             );
             return {
                 success: true,

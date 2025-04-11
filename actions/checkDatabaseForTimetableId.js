@@ -1,15 +1,15 @@
 'use server';
 import { query } from "./db";
 
-const checkDatabaseForTimetableId = async (timetableId) => {    
+const checkDatabaseForTimetableId = async (timetableId, userId) => {
     try {
         const result = await query(`
             SELECT EXISTS (
                 SELECT 1
                 FROM timetables
-                WHERE id = $1
+                WHERE timetable_id = $1 AND user_id = $2
             ) AS exists
-        `, [timetableId]);
+        `, [timetableId, userId]);
 
         return result.rows[0].exists;
     } catch (error) {

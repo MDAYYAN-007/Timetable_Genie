@@ -1,7 +1,7 @@
 'use server';
 
 async function generateTimetable(input) {
-    console.log("Generating timetable with input:", input);
+    // console.log("Generating timetable with input:", input);
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const periods = parseInt(input.periods);
     const satPeriods = parseInt(input.satPeriods);
@@ -31,7 +31,7 @@ async function generateTimetable(input) {
     }
 
     // Helper function to check if a lab can be placed
-    function canPlaceLab(period,day) {
+    function canPlaceLab(period, day) {
         if (period === shortBreak || period === lunchBreak) {
             return false;
         }
@@ -44,10 +44,10 @@ async function generateTimetable(input) {
     // Function to place labs with maximum retries
     function placeLabs(maxRetries = 10) {
         let retries = 0;
-        
+
         while (retries < maxRetries) {
             let success = true;
-            
+
             // Reset counts for each attempt
             labCount = labs.reduce((acc, lab) => ({ ...acc, [lab]: 0 }), {});
             for (let day of days) {
@@ -63,18 +63,18 @@ async function generateTimetable(input) {
                 while (labCount[lab] < frequency) {
                     let placed = false;
                     let attempts = 0;
-                    
+
                     // Try to place this lab instance
                     while (!placed && attempts < 100) {
                         let day = days[Math.floor(Math.random() * days.length)];
                         let period = Math.floor(Math.random() * (timetable[day].length - 1)) + 1;
 
-                        if (canPlaceLab(period,day) && 
-                            isTeacherAvailable(labTeacher, day, period) && 
+                        if (canPlaceLab(period, day) &&
+                            isTeacherAvailable(labTeacher, day, period) &&
                             isTeacherAvailable(labTeacher, day, period + 1) &&
                             timetable[day][period - 1] === null &&
                             timetable[day][period] === null) {
-                            
+
                             timetable[day][period - 1] = { type: "Lab", name: lab, teacher: labTeacher };
                             timetable[day][period] = { type: "Lab", name: lab, teacher: labTeacher };
                             labCount[lab] += 1;
@@ -88,7 +88,7 @@ async function generateTimetable(input) {
                         break;
                     }
                 }
-                
+
                 if (!success) break;
             }
 
@@ -107,38 +107,61 @@ async function generateTimetable(input) {
 
     // Function to place subjects period-wise
     function placeSubjects() {
-        for (let period = 1; period <= periods; period++) {
-            for (let i = 0; i < subjects.length; i++) {
-                let subject = subjects[i];
-                let teacher = teachers[i];
-                let frequency = frequencies[i];
+        let remainingSubjects = [];
 
-                while (subjectCount[subject] < frequency) {
-                    let placed = false;
-                    let attempts = 0;
-                    while (!placed && attempts < 100) {
-                        let day = days[Math.floor(Math.random() * days.length)];
+        // Fill up a pool with each subject according to its frequency
+        for (let i = 0; i < subjects.length; i++) {
+            let subject = subjects[i];
+            let teacher = teachers[i];
+            let frequency = frequencies[i];
 
-                        if (timetable[day][period - 1] === null && isTeacherAvailable(teacher, day, period)) {
-                            timetable[day][period - 1] = { type: "Subject", name: subject, teacher: teacher };
-                            subjectCount[subject] += 1;
-                            placed = true;
-                        }
-                        attempts++;
-                    }
-                    if (!placed) {
-                        // console.warn(`Could not place subject ${subject} in period ${period} after 100 attempts.`);
-                        break;
-                    }
-                }
+            for (let j = 0; j < frequency; j++) {
+                remainingSubjects.push({ subject, teacher });
             }
         }
+
+        // Loop through each period for each day
+        for (let period = 1; period <= periods; period++) {
+            for (let day of days) {
+                if (day === "Sat" && period > satPeriods) continue; 
+                console
+
+                if (timetable[day][period - 1] !== null) continue; // Already occupied (by lab)
+
+                let attempts = 0;
+                let placed = false;
+
+                while (attempts < 50 && remainingSubjects.length > 0) {
+                    const index = Math.floor(Math.random() * remainingSubjects.length);
+                    const { subject, teacher } = remainingSubjects[index];
+
+                    if (isTeacherAvailable(teacher, day, period)) {
+                        timetable[day][period - 1] = { type: "Subject", name: subject, teacher };
+                        remainingSubjects.splice(index, 1);
+                        placed = true;
+                        break;
+                    }
+
+                    attempts++;
+                }
+
+                // If not placed after attempts, just leave the slot empty and move on
+            }
+        }
+
+        if (remainingSubjects.length > 0) {
+            console.warn("Some subjects could not be placed:", remainingSubjects);
+            // Optionally, you can throw an error or handle it differently
+            throw new Error("Could not place all subjects within the available periods. Consider lowering frequencies or adjusting availability.");
+        }
     }
+
+
 
     // Place subjects
     placeSubjects();
 
-    console.log("Timetable generation complete",timetable);
+    // console.log("Timetable generation complete",timetable);
     return timetable;
 }
 

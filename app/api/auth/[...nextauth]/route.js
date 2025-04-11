@@ -6,7 +6,9 @@ import { query } from '@/actions/db';
 import storeUserLoginData from '@/actions/storeUserLoginData';
 import bcrypt from 'bcrypt';
 import getUserData from '@/actions/getUserData';
-// import migrateLocalDataToDB from '@/actions/migrateLocalDataToDB';
+import { cookies } from "next/headers";
+import getDraftData from '@/actions/getDraftData';
+import migrateLocalDataToDB from '@/actions/migrateLocalDataToDB';
 
 const saltRounds = 10;
 
@@ -66,18 +68,55 @@ const handler = NextAuth({
         })
     ],
     callbacks: {
-        async signIn(user, account) {
+        async signIn({ user, account, req }) {
             try {
-                console.log("hi")
-
+                console.log("User", user);
+                console.log("Account", account);
                 if (account?.provider === 'google') {
                     user.password = 'google';
+                    const email = user.email;
+                    console.log("Email:", email);
+                    if (email) {
+                        const checkResult = await query(`SELECT * FROM timetable_users WHERE email = $1`, [email]);
+                        console.log("Check Result:", checkResult.rows);
+                        if (checkResult.rowCount > 0) {
+                            user.id = checkResult.rows[0].id;
+                            user.isNewUser = false;
+                        } else {
+                            const hashedPassword = await bcrypt.hash(user.password, saltRounds);
+                            const userData = {
+                                email: email,
+                                password: hashedPassword
+                            };
+                            await storeUserLoginData(userData);
+                        }
+
+                        const cookieStore = await cookies();
+                        const UUIDOfStoredData = cookieStore.get("UUIDOfStoredData");
+
+                        console.log("UUIDOfStoredData:", UUIDOfStoredData);
+
+                        if (UUIDOfStoredData) {
+                            const storedData = await getDraftData(UUIDOfStoredData.value);
+                            console.log("Stored Data:", storedData);
+                            if (storedData) {
+                                const { form_data, timetables, generated_timetables } = storedData;
+                                console.log("Form Data:", form_data);
+                                console.log("Timetables:", timetables);
+                                console.log("Generated Timetables:", generated_timetables);
+                                const res = await migrateLocalDataToDB(timetables, form_data, generated_timetables, email);
+                                if (res) {
+                                    console.log("Local data migrated to DB successfully!");
+                                }
+                                // router.push("/timetables");
+                            }
+                        }
+                    }
                 }
 
                 if (user.isNewUser) {
                     await storeUserLoginData(user);
                 }
-                // await migrateLocalDataToDB(user.id,user.email);
                 return true;
             } catch (error) {
                 console.error(error);
@@ -88,12 +127,13 @@ const handler = NextAuth({
             try {
                 if (session.user && session.user.email) {
                     const user = await getUserData(session.user.email);
+                    // console.log(user);
                     session.user.id = user.id;
                     session.user.email = user.email;
                 }
                 return session;
             } catch (error) {
-                console.error(error);
+                console.log(error);
                 return session;
             }
         },

@@ -21,7 +21,8 @@ const storeUserLoginData = async (user) => {
             await query(
                 `INSERT INTO timetable_users(email, password) VALUES($1, $2)`,
                 [user.email, user.password]
-            )
+            );
+            console.log('User data stored successfully');
         }
 
     } catch (error) {

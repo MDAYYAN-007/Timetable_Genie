@@ -1,9 +1,9 @@
 'use server';
 import { query } from '@/actions/db';
 
-const getFormData = async (id) => {
+const getFormData = async (id, user_id) => {
     try {
-        const result = await query(`SELECT formData FROM timetable_formdata WHERE id = $1`, [id]);
+        const result = await query(`SELECT formData FROM timetable_formdata WHERE formdata_id = $1 AND user_id = $2`, [id, user_id]);
         // console.log('Result:', result);
 
         if (result.rows.length > 0) {

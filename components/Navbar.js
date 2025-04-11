@@ -4,10 +4,20 @@ import Link from "next/link";
 import { FaHome, FaInfoCircle, FaListAlt, FaSignInAlt, FaBars, FaTimes } from "react-icons/fa";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    const isConfirmed = window.confirm('Are you sure you want to delete this timetable?');
+    if (!isConfirmed) return;
+    await signOut({ redirect: false });
+    router.push("/login");
+  }
 
   return (
     <nav className="navbar bg-gradient-to-r from-[#8e44ad] to-[#3498db] shadow-md fixed w-full z-10 top-0 left-0">
@@ -89,7 +99,7 @@ export default function Navbar() {
           ) : session ? (
             <div className="group relative">
               <button
-                onClick={() => signOut()}
+                onClick={() => handleSignOut()}
                 className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-4 py-2 max-md:px-3 max-md:py-1 rounded-lg transition-all"
               >
                 <span className="text-white">Sign Out</span>
