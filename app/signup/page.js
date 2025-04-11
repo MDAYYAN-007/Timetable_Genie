@@ -213,7 +213,7 @@ export default function SignUpPage() {
                                 disabled={isLoading}
                             >
                                 <img
-                                    src="/images/googleicon.png"
+                                    src="\image.png"
                                     alt="Google"
                                     className="h-5 w-5 mr-3 max-md:h-4 max-md:w-4 max-md:mr-2"
                                 />
