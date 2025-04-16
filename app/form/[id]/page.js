@@ -62,7 +62,7 @@ export default function TimetableForm() {
   const checkLocalStorageForId = (id) => {
     try {
       const storedTimetables = JSON.parse(localStorage.getItem('timetables')) || [];
-      return storedTimetables.some(item => item.id === id);
+      return storedTimetables.some(item => item.timetable_id === id);
     } catch (error) {
       console.error("LocalStorage ID check failed:", error);
       return false;
