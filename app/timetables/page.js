@@ -45,9 +45,11 @@ const Timetables = () => {
 
         if (session) {
           const timetables = await getTimetables(session.user.email);
+          console.log("oiii1", timetables);
           setTimetables(timetables);
         } else {
           const savedTimetables = localStorage.getItem("timetables");
+          console.log("oiii3", savedTimetables);
           setTimetables(savedTimetables ? JSON.parse(savedTimetables) : []);
         }
       } catch (error) {
@@ -66,7 +68,7 @@ const Timetables = () => {
   const handleCreateTimetable = async () => {
     setOperationLoading(true);
     const id = Date.now().toString();
-    const newTimetable = { id, name: timetableName };
+
     try {
       if (!timetableName.trim()) {
         toast.error('Please enter a timetable name');
@@ -74,6 +76,7 @@ const Timetables = () => {
       }
 
       if (session) {
+        const newTimetable = { id, name: timetableName };
         const userData = await getUserData(session.user.email);
 
         if (!userData || !userData.id) {
@@ -86,6 +89,7 @@ const Timetables = () => {
         const updatedTimetables = await getTimetables(session.user.email);
         setTimetables(updatedTimetables);
       } else if (!session) {
+        const newTimetable = { timetable_id: id, name: timetableName };
         const updatedTimetables = [...timetables, newTimetable];
         localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
         setTimetables(updatedTimetables);
@@ -109,12 +113,12 @@ const Timetables = () => {
       setOperationLoading(true);
       try {
         if (session) {
-          await deleteTimetable(id,session.user.id);
+          await deleteTimetable(id, session.user.id);
           const updatedTimetables = await getTimetables(session.user.email);
           setTimetables(updatedTimetables);
           toast.success('Timetable deleted successfully!');
         } else {
-          const updatedTimetables = timetables.filter(timetable => timetable.id !== id);
+          const updatedTimetables = timetables.filter(timetable => timetable.timetable_id !== id);
           localStorage.setItem('timetables', JSON.stringify(updatedTimetables));
           setTimetables(updatedTimetables);
           toast.success('Timetable deleted successfully!');
@@ -131,7 +135,7 @@ const Timetables = () => {
   // Handle editing timetable name
   const handleEditTimetableName = (id) => {
     setEditingTimetableId(id);
-    const timetableToEdit = timetables.find(timetable => timetable.id === id);
+    const timetableToEdit = timetables.find(timetable => timetable.timetable_id === id);
     setTimetableName(timetableToEdit?.name || '');
     setIsEditNameModalOpen(true);
   };
@@ -150,7 +154,7 @@ const Timetables = () => {
       } else {
         // Update in local storage for guests
         const updatedTimetables = timetables.map(timetable =>
-          timetable.id === editingTimetableId ? { ...timetable, name: timetableName } : timetable
+          timetable.timetable_id === editingTimetableId ? { ...timetable, name: timetableName } : timetable
         );
         localStorage.setItem("timetables", JSON.stringify(updatedTimetables));
         setTimetables(updatedTimetables);
@@ -256,7 +260,7 @@ const Timetables = () => {
               {timetables.length > 0 ? (
                 timetables.map((timetable) => (
                   <div
-                    key={timetable.id}
+                    key={timetable.timetable_id}
                     className="bg-white w-72 p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all border border-gray-200 flex flex-col items-center"
                   >
                     {/* Timetable Name */}
