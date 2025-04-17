@@ -343,7 +343,7 @@ export default function TimetableForm() {
       const allForms = [...filteredForms, { id, data }];
       localStorage.setItem("formData", JSON.stringify(allForms));
 
-      const storedTimetables = JSON.parse(localStorage.getItem('generatedtimetables') || []);
+      const storedTimetables = JSON.parse(localStorage.getItem('generatedtimetables')) || [];
       const updatedTimetables = storedTimetables.filter(timetable => timetable.id !== id);
       localStorage.setItem('generatedtimetables', JSON.stringify(updatedTimetables));
       console.log('Deleted existing timetables from localStorage');
@@ -406,7 +406,7 @@ export default function TimetableForm() {
     <>
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <div className="mx-auto mt-[65px] flex-1 p-6 space-y-6 max-xl:p-5 max-lg:p-4 max-md:p-3 max-sm:p-2">
+        <div className="mx-[10dvw] mt-[65px] flex-1 p-6 space-y-6 max-xl:p-5 max-lg:p-4 max-md:p-3 max-sm:p-2">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="text-center space-y-2">
               <h1 className="text-4xl font-bold font-geistsans text-gray-800 max-2xl:text-3xl max-xl:text-3xl max-lg:text-2xl max-md:text-xl max-sm:text-lg">
