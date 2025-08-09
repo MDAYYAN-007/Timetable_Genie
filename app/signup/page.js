@@ -25,6 +25,8 @@ export default function SignUpPage() {
         e.preventDefault();
         setError('');
 
+        console.log("Sign Up Credentials in handleSignUp :", credentials);
+
         if (credentials.password !== credentials.confirmPassword) {
             setError('Passwords do not match');
             return;
@@ -38,13 +40,15 @@ export default function SignUpPage() {
         setIsLoading(true);
 
         try {
+
+            console.log("Attempting to sign up with credentials:", credentials);
             const result = await signIn('credentials', {
                 username: credentials.username,
                 password: credentials.password,
                 isSignUp: 'true',
                 redirect: false
             });
-
+            console.log("Sign Up Result:", result);
             if (result?.error) {
                 console.log(result.error);
                 if (result.error.includes('already exists')) {

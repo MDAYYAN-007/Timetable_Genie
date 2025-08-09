@@ -16,8 +16,9 @@ const migrateLocalDataToDB = async (timetables, formData, generatedTimetables, e
     const userId = userData.id;
 
     for (const timetable of timetables) {
-      if (timetable.id && timetable.name) {
-        await storeTimeTable(timetable.id, timetable.name, userId);
+      console.log('Migrating timetable:', timetable);
+      if (timetable.timetable_id && timetable.name) {
+        await storeTimeTable(timetable.timetable_id, timetable.name, userId);
         console.log(`Migrated timetable: ${timetable.name}`);
       }
     }

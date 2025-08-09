@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useForm, Controller, get } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import storeFormData from "@/actions/storeFromData";
@@ -21,12 +21,14 @@ export default function TimetableForm() {
     formState: { errors },
   } = useForm();
 
+  const periodsValue = useWatch({ control, name: 'periods' });
+
   const params = useParams();
   const id = params.id;
 
   const router = useRouter();
 
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const [loading, setLoading] = useState(true);
   const [idValid, setIdValid] = useState(null);
@@ -85,20 +87,20 @@ export default function TimetableForm() {
       setLoading(true);
       setVerificationComplete(false);
 
-      // console.log("Session in useEffect of form:", session);
+      console.log("Session in useEffect of form:", session);
 
       if (session === undefined) return;
 
       try {
         if (session) {
-          const idPresent = await checkDatabaseForTimetableId(id,session.user.id);
+          const idPresent = await checkDatabaseForTimetableId(id, session.user.id);
           if (!idPresent) {
             setIdValid(false);
             setVerificationComplete(true);
             return;
           }
 
-          const response = await getFormData(id,session.user.id);
+          const response = await getFormData(id, session.user.id);
           if (!response.success) {
             console.log(`Failed to fetch: ${response.message}`);
             return;
@@ -134,7 +136,7 @@ export default function TimetableForm() {
 
     fetchData();
 
-  }, [session?.user?.email, id]);
+  }, [status, id]);
 
   const [subjects, setSubjects] = useState([]);
   const [labNames, setLabNames] = useState([]);
@@ -307,9 +309,9 @@ export default function TimetableForm() {
     };
 
     const currentField = sectionValidationMap[activeSection];
-    const isValid = await trigger(currentField);
+    // const isValid = await trigger(currentField);
 
-    if (isValid && currentIndex > 0) setCurrentIndex(currentIndex - 1);
+    if (/*isValid && */ currentIndex > 0) setCurrentIndex(currentIndex - 1);
   };
 
   const toggleAvailability = (teacher, day, period) => {
@@ -329,7 +331,7 @@ export default function TimetableForm() {
       const result = await storeFormData(id, data, session.user.id);
 
       if (result.success) {
-        await deleteExistingTimetables(id,session.user.id);
+        await deleteExistingTimetables(id, session.user.id);
         router.push(`/timetable/${id}`);
       } else {
         console.log("Error storing form data:", result.message);
@@ -492,19 +494,26 @@ export default function TimetableForm() {
                 <div className="grid grid-cols-1 max-md:grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <label htmlFor="short-break" className="block font-semibold text-gray-700">
-                      Short Break After Which Period?
+                      After which period is the Short Break?
                     </label>
                     <Controller
                       name="shortBreak"
                       control={control}
                       defaultValue=""
-                      rules={{ required: true, min: 1, max: 8 }}
+                      rules={{
+                        required: true,
+                        validate: (value) => {
+                          const periods = getValues("periods");
+                          return (value >= 1 && value <= periods) ||
+                            `Must be between 1 and ${periods || 'your period count'}`;
+                        }
+                      }}
                       render={({ field }) => (
                         <input
                           id="short-break"
                           type="number"
                           className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          placeholder="Enter a value between 1 and number of periods"
+                          placeholder={periodsValue ? `1-${periodsValue}` : 'Enter period count first'}
                           {...field}
                         />
                       )}
@@ -520,19 +529,26 @@ export default function TimetableForm() {
 
                   <div className="space-y-3">
                     <label htmlFor="lunch-break" className="block font-semibold text-gray-700">
-                      Lunch Break After Which Period?
+                      After which period is the Lunch Break?
                     </label>
                     <Controller
                       name="lunchBreak"
                       control={control}
                       defaultValue=""
-                      rules={{ required: true, min: 1, max: 8 }}
+                      rules={{
+                        required: true,
+                        validate: (value) => {
+                          const periods = getValues("periods");
+                          return (value >= 1 && value <= periods) ||
+                            `Must be between 1 and ${periods || 'your period count'}`;
+                        }
+                      }}
                       render={({ field }) => (
                         <input
                           id="lunch-break"
                           type="number"
                           className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                          placeholder="Enter a value between 1 and number of periods"
+                          placeholder={periodsValue ? `1-${periodsValue}` : 'Enter period count first'}
                           {...field}
                         />
                       )}
@@ -556,7 +572,6 @@ export default function TimetableForm() {
 
               </div>
             )}
-
 
             {/* Section 2: Number of Subjects & Labs */}
             {activeSection === "Number of Subjects" && (

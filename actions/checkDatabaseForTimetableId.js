@@ -11,6 +11,9 @@ const checkDatabaseForTimetableId = async (timetableId, userId) => {
             ) AS exists
         `, [timetableId, userId]);
 
+        console.log('Checking timetable ID:', timetableId, 'for user:', userId);
+        console.log('Query result:', result.rows[0].exists);
+
         return result.rows[0].exists;
     } catch (error) {
         console.error("Error checking timetable ID:", error);

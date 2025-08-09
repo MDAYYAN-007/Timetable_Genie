@@ -17,7 +17,7 @@ const storeTimeTable = async (id, name, user_id) => {
             SELECT * FROM timetables WHERE timetable_id = $1 AND user_id = $2
         `, [id, user_id]);
 
-        console.log(existingTable.rows);
+        console.log(existingTable.rowCount);
 
         if (existingTable.rowCount > 0) {
             await query(`

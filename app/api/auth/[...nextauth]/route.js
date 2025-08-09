@@ -28,7 +28,7 @@ const handler = NextAuth({
             async authorize(credentials) {
                 try {
                     const isSignUp = credentials.isSignUp === 'true';
-
+                    console.log("Credentials:", credentials);
                     if (isSignUp) {
                         const checkResult = await query(`SELECT * FROM timetable_users WHERE email = $1`, [credentials.username]);
                         console.log(checkResult.rows);
@@ -115,6 +115,7 @@ const handler = NextAuth({
                 }
 
                 if (user.isNewUser) {
+                    console.log("New user detected, storing login data.");
                     await storeUserLoginData(user);
                 }
                 return true;

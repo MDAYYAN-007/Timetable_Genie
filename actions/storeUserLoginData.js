@@ -3,13 +3,15 @@ import { query } from './db';
 
 const storeUserLoginData = async (user) => {
     try {
-        // await query(`
-        //     CREATE TABLE IF NOT EXIST timetable_users(
-        //         id SERIAL PRIMARY KEY,
-        //         email VARCHAR(255) UNIQUE NOT NULL,
-        //         password TEXT NOT NULL
-        //     )
-        // `);
+
+        console.log('Storing user data:', user);
+        await query(`
+            CREATE TABLE IF NOT EXISTS timetable_users(
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        `);
 
         const checkResult = await query(`SELECT * FROM timetable_users WHERE email = $1`, [user.email]);
 

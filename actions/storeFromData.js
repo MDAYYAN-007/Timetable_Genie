@@ -3,7 +3,7 @@ import { query } from '@/actions/db';
 
 const storeFormData = async (id, formData, userId) => {
     try {
-
+    
          await query(`
             CREATE TABLE IF NOT EXISTS timetable_formdata (
                 id SERIAL PRIMARY KEY,

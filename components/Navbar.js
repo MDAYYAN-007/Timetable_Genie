@@ -13,7 +13,7 @@ export default function Navbar() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    const isConfirmed = window.confirm('Are you sure you want to delete this timetable?');
+    const isConfirmed = window.confirm('Are you sure you want to sign out?');
     if (!isConfirmed) return;
     await signOut({ redirect: false });
     router.push("/login");
@@ -23,11 +23,11 @@ export default function Navbar() {
     <nav className="navbar bg-gradient-to-r from-[#8e44ad] to-[#3498db] shadow-md fixed w-full z-10 top-0 left-0">
       <div className="mx-auto px-6 py-4 flex justify-between items-center max-md:px-4 max-sm:px-2">
         {/* Logo */}
-        <div className="text-2xl font-extrabold text-white flex items-center gap-2 max-md:text-xl">
+        <Link href="/" className="text-2xl font-extrabold text-white flex items-center gap-2 max-md:text-xl">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff8a65] to-[#ffe0b2]">
             Timetable Genie
           </span>
-        </div>
+        </Link>
 
         {/* Mobile Menu Button */}
         <button

@@ -15,7 +15,7 @@ import checkDatabaseForTimetableId from "@/actions/checkDatabaseForTimetableId";
 import Link from "next/link";
 
 const Timetable = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const params = useParams();
   const [loading, setLoading] = useState(true);
   const [isTimetableLoading, setIsTimetableLoading] = useState(true);
@@ -35,13 +35,22 @@ const Timetable = () => {
 
     const fetchTimetables = async () => {
       try {
+        console.log("Fetching timetable for ID:", id);
         setLoading(true);
         setVerificationComplete(false);
 
+        console.log("Session in useEffect of timetable/id:", session);
+        console.log("Status of session:", status);
+
         if (session === undefined) return;
 
+        console.log("Session data:", session);
+
         if (session) {
+          console.log("Session user email:", session.user.email);
+          console.log("Id of timetable:", id);
           const idPresent = await checkDatabaseForTimetableId(id,session.user.id);
+          console.log("ID present in database:", idPresent);
 
           if (!idPresent) {
             setIdValid(false);
@@ -72,7 +81,8 @@ const Timetable = () => {
             }
           } else {
             const formData = await getFormData(id,session.user.id);
-            if (formData) {
+            console.log("Form data fetched:", formData);
+            if (formData.success) {
               setPeriods(formData.data.periods);
               const timetable = await generateTimetable(formData.data);
               const res = await storeGeneratedTimetables(timetable, id, 1, session.user.id);
@@ -101,7 +111,7 @@ const Timetable = () => {
         }
         else {
           const idPresent = checkLocalStorageForId(id);
-
+          console.log("ID present in localStorage:", idPresent);
           if (!idPresent) {
             setIdValid(false);
             setVerificationComplete(true);
@@ -161,7 +171,8 @@ const Timetable = () => {
     };
 
     fetchTimetables();
-  }, [id, session?.user?.email]);
+    // I am not using session coz dependencies in session like expires keep changing often and that leads to recalling the useEffect and hence setting the timetables again
+  }, [id, status]);
 
   const checkLocalStorageForId = (id) => {
     try {
